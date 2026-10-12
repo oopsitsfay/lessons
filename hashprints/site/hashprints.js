@@ -1,4 +1,4 @@
-// HashPrints core: keccak256, proof-of-grind, Dutch pricing, and the print renderer.
+// HashPrints core: keccak256, the proof-of-work hash search, collection configs, and the print renderer.
 // Shared by the website, the grind worker, and the Node tests. Mirrors contracts/HashPrints.sol.
 (function (root) {
   // ---------------------------------------------------------------- keccak256
