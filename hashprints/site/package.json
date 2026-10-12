@@ -1,0 +1,9 @@
+{
+  "name": "hashprints-site",
+  "private": true,
+  "description": "Static site + Vercel functions. Dependencies are only used by the server-side admin gate.",
+  "dependencies": {
+    "@vercel/functions": "3.9.11",
+    "ethers": "6.17.0"
+  }
+}

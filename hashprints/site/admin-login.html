@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin Sign-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --muted: #7a7466; --rule: #d6cfbd; --accent: #ff48b0; --bad: #c62828; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --bad: #ff6b6b; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --bad: #ff6b6b; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; background: var(--paper); color: var(--ink); font: 16px/1.6 "Space Grotesk", system-ui, sans-serif; }
+  .card { width: 100%; max-width: 420px; border: 1px solid var(--rule); background: var(--paper-2); padding: 28px; }
+  .logo { font: 700 16px "JetBrains Mono", monospace; margin-bottom: 20px; }
+  .logo span { color: var(--accent); }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  p { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+  button { width: 100%; font: 700 14px "JetBrains Mono", monospace; padding: 13px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #000; }
+  button:disabled { opacity: .45; cursor: wait; }
+  .msg { font: 13px "JetBrains Mono", monospace; margin-top: 14px; min-height: 1.4em; word-break: break-word; }
+  .msg.err { color: var(--bad); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">HASH<span>/</span>PRINTS admin</div>
+    <h1>Sign in</h1>
+    <p>Connect an admin wallet and sign a message to open the dashboard. Signing is free. It doesn't send a transaction.</p>
+    <button id="signIn" type="button">Connect wallet &amp; sign</button>
+    <div class="msg" id="msg"></div>
+  </div>
+<script src="vendor/ethers-6.umd.min.js"></script>
+<script>
+  (function () {
+    const btn = document.getElementById('signIn');
+    const msg = document.getElementById('msg');
+    const say = (t, err) => { msg.textContent = t; msg.className = err ? 'msg err' : 'msg'; };
+    btn.onclick = async () => {
+      if (!window.ethereum) return say('No wallet found. Install MetaMask or another browser wallet.', true);
+      btn.disabled = true;
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send('eth_requestAccounts', []);
+        const signer = await provider.getSigner();
+        const address = (await signer.getAddress()).toLowerCase();
+        const message = [
+          'HashPrints admin sign-in',
+          `Domain: ${location.host}`,
+          `Address: ${address}`,
+          `Issued: ${new Date().toISOString()}`,
+        ].join('\n');
+        say('Sign the message in your wallet…');
+        const signature = await signer.signMessage(message);
+        const r = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ message, signature }),
+        });
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(body.error || `Sign-in failed (${r.status})`);
+        say('Signed in. Opening the dashboard…');
+        location.href = '/admin.html';
+      } catch (e) {
+        say(e.code === 'ACTION_REJECTED' ? 'You rejected the signature request.' : (e.shortMessage || e.message), true);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+  })();
+</script>
+</body>
+</html>

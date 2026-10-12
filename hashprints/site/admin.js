@@ -347,6 +347,7 @@
   }
 
   // ------------------------------------------------------------ wiring
+  $('signOutBtn').onclick = () => fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => { location.href = '/admin-login.html'; });
   $('connectBtn').onclick = () => connect().catch((e) => log(`Connect failed: ${errMsg(e)}`));
   $('switchMain').onclick = () => switchTo(1);
   $('switchSepolia').onclick = () => switchTo(11155111);

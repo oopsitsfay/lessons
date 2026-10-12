@@ -27,6 +27,7 @@ The supply shape is a constructor argument, so the same contract also deploys **
 - `site/print.html`: single-print viewer, used as each token's `external_url`.
 - `site/mint.html`, `site/mint.js`: public mint page. Shows "Not live" and blocks minting until the owner presses Go live, then switches over by itself (checks every 15 s).
 - `site/mint-config.json`: which contract the public mint page uses (`main` and `test`, with chain id and address).
+- `site/middleware.js`, `site/lib/admin-session.js`, `site/api/admin/`, `site/admin-login.html`: server-side wallet sign-in that gates the admin dashboard.
 - `site/admin.html`, `site/admin.js`: owner dashboard. Connect a wallet to deploy, open minting, test-mint, withdraw, lock metadata and transfer ownership.
 - `site/contract/`: compiled ABI + bytecode the admin page deploys, and the standard JSON input for Etherscan verification (`npm run export` regenerates both).
 - `site/api/meta/[id].js`, `site/api/test/meta/[id].js`, `site/api/image.js`: stateless metadata and SVG endpoints (Vercel functions).
@@ -44,7 +45,14 @@ npm run serve       # website at http://localhost:8080
 
 ## Running a mint (admin page)
 
-Open `/admin.html` and connect the wallet that should own the contract.
+`/admin.html` is gated on the server (`site/middleware.js`). Without a session it redirects to `/admin-login.html`, where an admin wallet signs a free sign-in message. `api/admin/login.js` checks the signature, the domain and a 5-minute timestamp window, then sets a 12-hour HttpOnly session cookie. Two Vercel environment variables control it:
+
+- `ADMIN_WALLETS`: comma-separated admin wallet addresses. Removing an address signs it out immediately.
+- `ADMIN_SESSION_SECRET`: random key that signs session cookies. Rotating it signs everyone out.
+
+If either is missing, nobody can sign in. The gate fails closed.
+
+Once signed in, connect the wallet that should own the contract.
 
 1. Pick a preset (Test HashPrint or HashPrints), check the fields, then click **Estimate cost** and **Deploy**.
 2. Verify the source on Etherscan using the values in the *Verify* panel.
