@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HashMint</title>
+<style>
+  :root {
+    --bg: #07070a; --panel: #111118; --line: #26263a; --text: #e8e8f0; --dim: #7c7c96;
+    --neon: #c6ff00; --pink: #ff2bd6;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: 2px; color: var(--neon); text-shadow: 0 0 12px #c6ff0066; }
+  .sub { color: var(--dim); margin: 4px 0 24px; }
+  .mint { display: grid; grid-template-columns: 320px 1fr; gap: 24px; background: var(--panel); border: 1px solid var(--line); padding: 20px; }
+  @media (max-width: 720px) { .mint { grid-template-columns: 1fr; } }
+  canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; background: #000; border: 1px solid var(--line); }
+  label { display: block; color: var(--dim); font-size: 12px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: 1px; }
+  input[type=text] { width: 100%; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line); color: var(--text); font: inherit; }
+  input[type=range] { width: 100%; accent-color: var(--neon); }
+  button { font: inherit; cursor: pointer; padding: 8px 14px; background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:hover { border-color: var(--neon); color: var(--neon); }
+  button.primary { background: var(--neon); color: #000; border-color: var(--neon); font-weight: 700; margin-top: 16px; width: 100%; padding: 12px; letter-spacing: 2px; }
+  button.primary:disabled { opacity: .5; cursor: wait; }
+  .stat { margin-top: 12px; color: var(--dim); word-break: break-all; min-height: 3em; }
+  .stat b { color: var(--neon); font-weight: 400; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 32px 0 12px; }
+  .bar h2 { margin: 0 auto 0 0; font-size: 16px; letter-spacing: 1px; }
+  .verdict { width: 100%; color: var(--dim); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 10px; }
+  .card.Golden, .card.Mythic { border-color: #ffd700; box-shadow: 0 0 16px #ffd70044; }
+  .card h3 { margin: 8px 0 2px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; }
+  .card h3 span { color: var(--dim); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .tags span { font-size: 11px; padding: 1px 6px; border: 1px solid var(--line); color: var(--dim); }
+  .tags span.r { color: #ffd700; border-color: #ffd70088; }
+  .hash { font-size: 11px; color: var(--dim); word-break: break-all; }
+  .card .row { display: flex; gap: 6px; margin-top: 8px; }
+  .card .row button { flex: 1; font-size: 12px; padding: 4px; }
+  .empty { color: var(--dim); padding: 32px; text-align: center; border: 1px dashed var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <h1>HASHMINT_</h1>
+  <p class="sub">Proof-of-work pixel mints. Every block's SHA-256 hash seeds the lines. Higher difficulty = more grinding. Extra leading zeros past difficulty = <span style="color:#ffd700">24K Golden</span>.</p>
+
+  <section class="mint">
+    <canvas id="preview" width="32" height="32"></canvas>
+    <div>
+      <label for="minter">Minter</label>
+      <input id="minter" type="text" value="anon" maxlength="32">
+      <label for="message">Message (inscribed in block)</label>
+      <input id="message" type="text" value="wagmi" maxlength="80">
+      <label for="difficulty">Difficulty: <b id="diffLabel">4</b> leading zeros (~<span id="expected">65,536</span> hashes)</label>
+      <input id="difficulty" type="range" min="1" max="6" value="4">
+      <button id="mintBtn" class="primary">MINT</button>
+      <div id="stat" class="stat">Ready. Hit mint and watch the candidates flicker.</div>
+    </div>
+  </section>
+
+  <div class="bar">
+    <h2>LEDGER</h2>
+    <button id="verifyBtn">Verify chain</button>
+    <button id="exportBtn">Export JSON</button>
+    <button id="importBtn">Import</button>
+    <button id="resetBtn">Burn all</button>
+    <input id="importFile" type="file" accept="application/json" hidden>
+    <div id="verdict" class="verdict"></div>
+  </div>
+  <div id="gallery" class="grid"></div>
+</main>
+
+<script src="pixelmint.js"></script>
+<script>
+  const PM = window.PixelMint;
+  const KEY = 'hashmint.ledger.v1';
+  const $ = (id) => document.getElementById(id);
+
+  let chain = [];
+  try { chain = JSON.parse(localStorage.getItem(KEY)) || []; } catch {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(chain)); } catch {} };
+
+  function paint(canvas, art) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.height = art.size;
+    art.grid.forEach((row, y) => row.forEach((c, x) => {
+      ctx.fillStyle = art.palette[c];
+      ctx.fillRect(x, y, 1, 1);
+    }));
+  }
+
+  function download(name, blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function renderGallery() {
+    const g = $('gallery');
+    g.innerHTML = '';
+    if (!chain.length) {
+      g.innerHTML = '<div class="empty">Nothing minted yet. Genesis is waiting.</div>';
+      return;
+    }
+    [...chain].reverse().forEach((b) => {
+      const art = PM.generate(b.hash, b.difficulty);
+      const card = document.createElement('div');
+      card.className = 'card ' + art.traits.rarity;
+      const c = document.createElement('canvas');
+      paint(c, art);
+      card.appendChild(c);
+      card.insertAdjacentHTML('beforeend', `
+        <h3>#${b.index} <span></span></h3>
+        <div class="tags"></div>
+        <div class="hash">${b.hash}</div>
+        <div class="row"><button data-k="png">PNG</button><button data-k="svg">SVG</button></div>`);
+      card.querySelector('h3 span').textContent = `"${b.message}" · ${b.minter}`;
+      const tags = card.querySelector('.tags');
+      for (const [k, v] of Object.entries(art.traits)) {
+        const t = document.createElement('span');
+        t.textContent = k === 'rarity' ? v : `${k}: ${v}`;
+        if (k === 'rarity' && v !== 'Common') t.className = 'r';
+        tags.appendChild(t);
+      }
+      card.querySelector('[data-k=svg]').onclick = () =>
+        download(`hashmint-${b.index}.svg`, new Blob([PM.toSVG(art, 16)], { type: 'image/svg+xml' }));
+      card.querySelector('[data-k=png]').onclick = () => {
+        const big = document.createElement('canvas');
+        big.width = big.height = art.size * 16;
+        const ctx = big.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(c, 0, 0, big.width, big.height);
+        big.toBlob((blob) => download(`hashmint-${b.index}.png`, blob));
+      };
+      g.appendChild(card);
+    });
+  }
+
+  $('difficulty').oninput = (e) => {
+    const d = Number(e.target.value);
+    $('diffLabel').textContent = d;
+    $('expected').textContent = (16 ** d).toLocaleString();
+  };
+
+  $('mintBtn').onclick = async () => {
+    const btn = $('mintBtn');
+    btn.disabled = true;
+    btn.textContent = 'GRINDING…';
+    const draft = PM.nextDraft(chain, $('minter').value.trim() || 'anon', $('message').value.trim() || 'untitled', Number($('difficulty').value));
+    const t0 = performance.now();
+    const block = await PM.mine(draft, {
+      chunk: 1500,
+      onProgress: async (n) => {
+        // Flash the art of the latest losing candidate so you can watch the grind.
+        const h = await PM.sha256Hex(PM.blockPayload({ ...draft, nonce: n }));
+        paint($('preview'), PM.generate(h, 0));
+        const rate = Math.round(n / ((performance.now() - t0) / 1000));
+        $('stat').innerHTML = `nonce <b>${n.toLocaleString()}</b> · ${rate.toLocaleString()} H/s<br>${h}`;
+      },
+    });
+    const secs = ((performance.now() - t0) / 1000).toFixed(2);
+    chain.push(block);
+    save();
+    const art = PM.generate(block.hash, block.difficulty);
+    paint($('preview'), art);
+    $('stat').innerHTML = `Minted <b>#${block.index}</b> in ${secs}s (nonce ${block.nonce.toLocaleString()}) · <b>${art.traits.rarity}</b><br>${block.hash}`;
+    btn.disabled = false;
+    btn.textContent = 'MINT';
+    renderGallery();
+  };
+
+  $('verifyBtn').onclick = async () => {
+    const res = await PM.verifyChain(chain);
+    $('verdict').textContent = res.ok ? `✔ chain valid · ${chain.length} blocks` : `✘ block #${res.at}: ${res.reason}`;
+    $('verdict').style.color = res.ok ? 'var(--neon)' : 'var(--pink)';
+  };
+  $('exportBtn').onclick = () =>
+    download('hashmint-ledger.json', new Blob([JSON.stringify(chain, null, 2)], { type: 'application/json' }));
+  $('importBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      chain = JSON.parse(await file.text());
+      save();
+      renderGallery();
+      $('verifyBtn').click();
+    } catch { $('verdict').textContent = 'Could not parse that file.'; }
+  };
+  $('resetBtn').onclick = () => {
+    if (!confirm('Burn the whole ledger?')) return;
+    chain = [];
+    save();
+    renderGallery();
+    $('verdict').textContent = '';
+  };
+
+  renderGallery();
+  PM.sha256Hex('hashmint').then((h) => paint($('preview'), PM.generate(h)));
+</script>
+</body>
+</html>
