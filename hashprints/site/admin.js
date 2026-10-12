@@ -208,7 +208,7 @@
         ['Address', `<a href="${addrLink(info.address)}" target="_blank" rel="noopener">${info.address}</a>`],
         ['Owner', `${info.owner}${info.isOwner ? ' <span class="ok">(you)</span>' : ''}`],
         ...(info.pendingOwner !== ethers.ZeroAddress ? [['Pending owner', info.pendingOwner]] : []),
-        ['Minting', open ? `<span class="ok">open</span> since ${new Date(Number(info.openedAt) * 1000).toLocaleString()}` : '<span class="bad">closed</span>'],
+        ['Status', open ? `<span class="ok">Live</span> since ${new Date(Number(info.openedAt) * 1000).toLocaleString()}` : '<span class="bad">Not live</span> (mints are rejected until you press Go live)'],
         ['Price', `${ethers.formatEther(info.price)} ETH + gas`],
         ['Minted', `${info.totalSupply} / ${info.MAX_SUPPLY} (public ${info.pressed}/${publicMax}, A/P ${info.artistProofsPressed}/${info.ARTIST_PROOFS})`],
         ['Run', info.pressed >= publicMax ? 'sold out' : `${info.currentRun + 1n} of ${info.RUNS} · ${info.difficulty} bits`],
@@ -218,6 +218,9 @@
       ];
       $('statusTable').innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
       $('openBtn').disabled = !info.isOwner || open;
+      $('openBtn').textContent = open ? 'Live' : 'Go live';
+      const pub = `mint.html?${info.symbol === HP.COLLECTIONS.test.symbol ? 'c=test&' : ''}chain=${chainId}&address=${info.address}`;
+      $('publicLink').innerHTML = `Public mint page for this contract: <a href="${pub}" target="_blank" rel="noopener">${location.origin}/${pub}</a>`;
       $('priceBtn').disabled = !info.isOwner || open;
       $('baseBtn').disabled = !info.isOwner || info.baseURILocked;
       $('lockBtn').disabled = !info.isOwner || info.baseURILocked;
@@ -352,7 +355,7 @@
   $('deployBtn').onclick = deploy;
   $('loadBtn').onclick = () => loadContract($('loadAddr').value.trim());
   $('refreshBtn').onclick = (e) => { e.preventDefault(); refreshStatus(); loadTokens(); };
-  $('openBtn').onclick = () => confirm(`Open minting on ${chain().name}? The price can't be changed afterwards.`) && send('Open minting', () => contract.openPress());
+  $('openBtn').onclick = () => confirm(`Go live on ${chain().name}? Anyone can mint from this moment. This can't be undone and the price is fixed from now on.`) && send('Go live', () => contract.openPress());
   $('priceBtn').onclick = () => {
     let wei;
     try { wei = ethers.parseEther($('newPrice').value.trim()); } catch { return log('Enter a price in ETH, e.g. 0.000315'); }

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mint HashPrints</title>
+<meta name="description" content="Mint a HashPrint: find a proof-of-work hash in your browser and mint it for 0.000315 ETH.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --ink-2: #4a463d; --muted: #7a7466; --rule: #d6cfbd; --accent: #ff48b0; --ok: #00835a; --bad: #c62828; --gold: #b38b14; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --gold: #ffd700; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --gold: #ffd700; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 "Space Grotesk", system-ui, sans-serif; }
+  a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  nav { border-bottom: 1px solid var(--rule); }
+  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+  .logo { font: 700 18px "JetBrains Mono", monospace; text-decoration: none; }
+  .logo span { color: var(--accent); }
+  main { padding: 48px 0 80px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; gap: 28px; } }
+  h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1; letter-spacing: -2px; margin: 0 0 12px; }
+  .badge { display: inline-flex; align-items: center; gap: 8px; font: 700 12px "JetBrains Mono", monospace; letter-spacing: 1px; text-transform: uppercase; padding: 6px 12px; border: 2px solid var(--rule); margin-bottom: 20px; }
+  .badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .badge.live { border-color: var(--ok); color: var(--ok); }
+  .badge.live i { background: var(--ok); animation: pulse 1.6s infinite; }
+  .badge.off { border-color: var(--bad); color: var(--bad); }
+  .badge.off i { background: var(--bad); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .badge.live i { animation: none; } }
+  .lede { color: var(--ink-2); font-size: 18px; margin: 0 0 24px; }
+  .facts { border-top: 2px solid var(--ink); margin: 0 0 24px; font: 14px "JetBrains Mono", monospace; }
+  .facts div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; text-align: right; }
+  .bar { height: 8px; background: var(--paper-2); border: 1px solid var(--rule); margin: -12px 0 24px; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s; }
+  button { font: 700 14px "JetBrains Mono", monospace; padding: 14px 18px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; width: 100%; letter-spacing: .5px; }
+  button.ghost { background: transparent; color: var(--ink); }
+  button:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #000; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; margin-top: 8px; }
+  .row button { flex: 1; }
+  label { display: block; font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 16px 0 6px; }
+  select { width: 100%; font: 13px "JetBrains Mono", monospace; padding: 10px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); }
+  .frame { background: var(--paper-2); border: 1px solid var(--rule); padding: 14px; }
+  canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+  .msg { font: 13px "JetBrains Mono", monospace; color: var(--ink-2); margin-top: 14px; min-height: 1.5em; word-break: break-word; }
+  .msg.err { color: var(--bad); }
+  .result { margin-top: 16px; font: 13px "JetBrains Mono", monospace; }
+  .result table { width: 100%; border-collapse: collapse; }
+  .result th, .result td { text-align: left; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  .result th { color: var(--muted); font-weight: 400; }
+  .result td { text-align: right; }
+  .gold { color: var(--gold); font-weight: 700; }
+  .notlive { border: 1px dashed var(--rule); padding: 20px; text-align: center; color: var(--ink-2); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<nav><div class="wrap"><a class="logo" href="/">HASH<span>/</span>PRINTS</a><a href="/#minting">How it works</a></div></nav>
+<main class="wrap">
+  <div class="grid">
+    <div>
+      <div class="badge" id="badge"><i></i><span id="badgeText">Checking…</span></div>
+      <h1 id="title">Mint</h1>
+      <p class="lede" id="lede">Your browser searches for a hash that starts with enough zero bits. Then you mint it at the fixed price. You pay gas on top.</p>
+      <dl class="facts">
+        <div><dt>Price</dt><dd id="fPrice">0.000315 ETH + gas</dd></div>
+        <div><dt>Minted</dt><dd id="fMinted">–</dd></div>
+        <div><dt>Difficulty</dt><dd id="fDiff">–</dd></div>
+        <div><dt>Per wallet</dt><dd id="fWallet">2 max</dd></div>
+        <div><dt>Network</dt><dd id="fNet">–</dd></div>
+      </dl>
+      <div class="bar"><span id="bar"></span></div>
+
+      <div id="notLive" class="notlive hidden">Minting hasn't started yet. This page checks every 15 seconds and opens automatically when it goes live.</div>
+
+      <div id="mintBox" class="hidden">
+        <button id="connectBtn" type="button">Connect wallet</button>
+        <div id="mintControls" class="hidden">
+          <label for="aim">Search until</label>
+          <select id="aim">
+            <option value="0">First valid hash</option>
+            <option value="2">+2 extra bits</option>
+            <option value="4">+4 extra bits · Gold Leaf</option>
+          </select>
+          <div class="row">
+            <button id="mintBtn" type="button">Find hash &amp; mint</button>
+            <button id="stopBtn" class="ghost" type="button" disabled style="flex:0 0 auto;width:auto">Stop</button>
+          </div>
+        </div>
+      </div>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div>
+      <div class="frame"><canvas id="canvas" width="32" height="32"></canvas></div>
+      <div class="result hidden" id="result"><table id="resultTable"></table></div>
+    </div>
+  </div>
+</main>
+<script src="vendor/ethers-6.umd.min.js"></script>
+<script src="hashprints.js"></script>
+<script src="mint.js"></script>
+</body>
+</html>

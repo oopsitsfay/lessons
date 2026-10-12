@@ -122,6 +122,7 @@
     <section class="panel">
       <h2>Status</h2>
       <p>Read live from the chain. <a href="#" id="refreshBtn">Refresh</a></p>
+      <p id="publicLink" class="status"></p>
       <table id="statusTable"><tr><td class="mono" style="color:var(--muted)">No contract loaded.</td></tr></table>
     </section>
 
@@ -129,8 +130,8 @@
       <h2>Owner actions</h2>
       <p>Only work from the owner wallet.</p>
       <div class="actions">
-        <div class="action"><h3>Open minting</h3><p>Starts run 1. The price is fixed once minting opens.</p><button id="openBtn" type="button">Open minting</button></div>
-        <div class="action"><h3>Set price</h3><p>Only before minting opens.</p>
+        <div class="action"><h3>Go live</h3><p>Until you press this, every mint is rejected by the contract and the public mint page shows "not live". Going live can't be undone, and the price is fixed from then on.</p><button id="openBtn" type="button">Go live</button></div>
+        <div class="action"><h3>Set price</h3><p>Only before going live.</p>
           <div class="row"><div class="f"><input id="newPrice" placeholder="0.000315"></div><button id="priceBtn" class="ghost" type="button">Set price</button></div></div>
         <div class="action"><h3>Base URI</h3><p>Change where metadata is served from. Lock it once a token shows correctly on a marketplace.</p>
           <div class="row"><div class="f"><input id="newBase" spellcheck="false"></div><button id="baseBtn" class="ghost" type="button">Set</button></div>

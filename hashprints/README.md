@@ -25,6 +25,8 @@ The supply shape is a constructor argument, so the same contract also deploys **
 - `site/hashprints.js`: shared core with keccak256, the hash search, collection configs and the print renderer. It mirrors the contract exactly.
 - `site/index.html`, `site/app.js`, `site/grind-worker.js`: the website and simulator.
 - `site/print.html`: single-print viewer, used as each token's `external_url`.
+- `site/mint.html`, `site/mint.js`: public mint page. Shows "Not live" and blocks minting until the owner presses Go live, then switches over by itself (checks every 15 s).
+- `site/mint-config.json`: which contract the public mint page uses (`main` and `test`, with chain id and address).
 - `site/admin.html`, `site/admin.js`: owner dashboard. Connect a wallet to deploy, open minting, test-mint, withdraw, lock metadata and transfer ownership.
 - `site/contract/`: compiled ABI + bytecode the admin page deploys, and the standard JSON input for Etherscan verification (`npm run export` regenerates both).
 - `site/api/meta/[id].js`, `site/api/test/meta/[id].js`, `site/api/image.js`: stateless metadata and SVG endpoints (Vercel functions).
@@ -46,9 +48,10 @@ Open `/admin.html` and connect the wallet that should own the contract.
 
 1. Pick a preset (Test HashPrint or HashPrints), check the fields, then click **Estimate cost** and **Deploy**.
 2. Verify the source on Etherscan using the values in the *Verify* panel.
-3. **Open minting**. The price is locked from this point.
-4. **Find hash and mint** runs a real mint from your wallet. Check the token on a marketplace, then **Lock base URI**.
-5. **Withdraw** sends the mint revenue (the contract balance) to any address. It defaults to the owner wallet.
+3. Put the contract address in `site/mint-config.json` (or share the public mint link the admin page shows).
+4. **Go live**. Until then, the contract rejects every mint and the mint page shows "Not live". Going live can't be undone, and it locks the price.
+5. **Find hash and mint** runs a real mint from your wallet. Check the token on a marketplace, then **Lock base URI**.
+6. **Withdraw** sends the mint revenue (the contract balance) to any address. It defaults to the owner wallet.
 
 Owner-only actions are enforced by the contract. The page itself holds no keys.
 

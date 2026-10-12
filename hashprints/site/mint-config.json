@@ -1,0 +1,4 @@
+{
+  "main": { "chainId": 1, "address": "" },
+  "test": { "chainId": 1, "address": "" }
+}
