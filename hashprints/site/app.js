@@ -136,8 +136,9 @@
 
   // Inspector dialog
   let inspected = null;
-  function inspect(seed, difficulty, title) {
+  function inspect(seed, difficulty, title, id) {
     const art = HP.render(seed, difficulty);
+    $('inspectOpen').href = `print.html?${id ? `id=${id}&` : ''}seed=0x${seed}&d=${difficulty}`;
     inspected = { art, name: title.replace(/[^\w-]+/g, '-').toLowerCase() };
     paint($('inspectPrint'), art);
     const rows = [['Print', title], ...Object.entries(art.traits), ['Seed', `0x${seed.slice(0, 18)}…`]];
@@ -149,7 +150,7 @@
   $('inspectPng').onclick = () => inspected && downloadPng(inspected.art, inspected.name);
   $('inspectSvg').onclick = () => inspected && download(inspected.name + '.svg', new Blob([HP.toSVG(inspected.art, 16)], { type: 'image/svg+xml' }));
 
-  function thumb(container, { seed, difficulty, title, left, right }) {
+  function thumb(container, { seed, difficulty, title, left, right, id }) {
     const b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('aria-label', `Inspect ${title}`);
@@ -159,7 +160,7 @@
     paint(c, art);
     b.appendChild(c);
     b.insertAdjacentHTML('beforeend', `<div class="cap"><span>${left}</span><span>${right}</span></div>`);
-    b.onclick = () => inspect(seed, difficulty, title);
+    b.onclick = () => inspect(seed, difficulty, title, id);
     b.dataset.edition = art.traits.Edition;
     b.dataset.rare = art.traits.Rarity !== 'Common';
     container.appendChild(b);
@@ -171,7 +172,7 @@
   });
   samples.forEach(({ seed, id }) => {
     const art = HP.render(seed, 16);
-    thumb($('gallery'), { seed, difficulty: 16, title: `HashPrint #${id}`, left: `#${id}`, right: art.traits.Rarity === 'Common' ? art.traits.Press : art.traits.Rarity });
+    thumb($('gallery'), { seed, difficulty: 16, id, title: `HashPrint #${id}`, left: `#${id}`, right: art.traits.Rarity === 'Common' ? art.traits.Press : art.traits.Rarity });
   });
   document.querySelectorAll('[data-filter]').forEach((chip) => {
     chip.onclick = () => {
@@ -408,7 +409,7 @@
       return;
     }
     [...myPrints].reverse().forEach((p) => thumb(box, {
-      seed: p.hash, difficulty: p.difficulty, title: `HashPrint #${p.tokenId} (simulated)`,
+      seed: p.hash, difficulty: p.difficulty, id: p.tokenId, title: `HashPrint #${p.tokenId} (simulated)`,
       left: `#${p.tokenId}`, right: `${ethStr(BigInt(p.price))} Ξ`,
     }));
   }

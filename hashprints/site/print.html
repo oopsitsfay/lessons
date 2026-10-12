@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HashPrint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --muted: #7a7466; --rule: #d6cfbd; --accent: #ff48b0; --gold: #b38b14; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #0b0b10; --paper-2: #13131b; --ink: #f0efec; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --gold: #ffd700; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #0b0b10; --paper-2: #13131b; --ink: #f0efec; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --gold: #ffd700; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 "Space Grotesk", system-ui, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; font: 700 16px "JetBrains Mono", monospace; }
+  .top span { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; gap: 24px; } }
+  .frame { background: var(--paper-2); border: 1px solid var(--rule); padding: 14px; }
+  canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+  h1 { font-size: clamp(36px, 6vw, 56px); line-height: 1; margin: 0 0 8px; letter-spacing: -1px; }
+  .sub { color: var(--muted); font: 13px "JetBrains Mono", monospace; word-break: break-all; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font: 13px "JetBrains Mono", monospace; margin-bottom: 24px; }
+  th, td { text-align: left; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+  th { color: var(--muted); font-weight: 400; width: 40%; }
+  td { text-align: right; }
+  .gold { color: var(--gold); font-weight: 700; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, .btn { font: 700 13px "JetBrains Mono", monospace; padding: 10px 16px; border: 2px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; text-decoration: none; }
+  button:hover, .btn:hover { background: var(--ink); color: var(--paper); }
+  .err { border-left: 4px solid var(--accent); padding: 12px 16px; background: var(--paper-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><a href="/" style="text-decoration:none">HASH<span>/</span>PRINTS</a><a href="/#simulator">Mint →</a></div>
+  <div id="view"></div>
+</div>
+<script src="hashprints.js"></script>
+<script>
+  (function () {
+    const HP = window.HashPrints;
+    const q = new URLSearchParams(location.search);
+    const id = Number(q.get('id'));
+    const seed = (q.get('seed') || '').toLowerCase();
+    const d = Number(q.get('d') || 16);
+    const view = document.getElementById('view');
+    if (!/^0x[0-9a-f]{64}$/.test(seed) || HP.leadingZeroBits(HP.fromHex(seed)) < d) {
+      view.innerHTML = '<p class="err">This link doesn\'t point to a valid print. It needs a 64-character seed with enough zero bits.</p>';
+      return;
+    }
+    const art = HP.render(seed, d);
+    const title = id >= 1 && id <= 3 ? `A/P ${id}` : id ? `#${id}` : 'Proof';
+    document.title = `HashPrint ${title}`;
+    view.innerHTML = `
+      <div class="grid">
+        <div class="frame"><canvas id="c"></canvas></div>
+        <div>
+          <h1>HashPrint ${title}</h1>
+          <div class="sub">seed ${seed}</div>
+          <table id="t"></table>
+          <div class="btns"><button id="png" type="button">PNG</button><button id="svg" type="button">SVG</button><a class="btn" href="/#art">About the art</a></div>
+        </div>
+      </div>`;
+    const c = document.getElementById('c');
+    c.width = c.height = art.size;
+    const ctx = c.getContext('2d');
+    art.grid.forEach((row, y) => row.forEach((v, x) => { ctx.fillStyle = art.palette[v]; ctx.fillRect(x, y, 1, 1); }));
+    const rows = Object.entries(art.traits);
+    if (id > 3) rows.push(['Run', Math.floor((id - 4) / 333) + 1]);
+    rows.push(['Difficulty', `${d} bits`]);
+    const t = document.getElementById('t');
+    for (const [k, v] of rows) {
+      const tr = t.insertRow();
+      const th = document.createElement('th');
+      th.textContent = k;
+      tr.appendChild(th);
+      const td = tr.insertCell();
+      td.textContent = v;
+      if (k === 'Rarity' && v !== 'Common') td.className = 'gold';
+    }
+    const save = (name, blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    };
+    const name = `hashprint-${id || seed.slice(2, 10)}`;
+    document.getElementById('svg').onclick = () => save(name + '.svg', new Blob([HP.toSVG(art, 16)], { type: 'image/svg+xml' }));
+    document.getElementById('png').onclick = () => {
+      const big = document.createElement('canvas');
+      big.width = big.height = art.size * 16;
+      const g = big.getContext('2d');
+      g.imageSmoothingEnabled = false;
+      g.drawImage(c, 0, 0, big.width, big.height);
+      big.toBlob((b) => save(name + '.png', b));
+    };
+  })();
+</script>
+</body>
+</html>

@@ -52,7 +52,9 @@ describe('HashPrints', function () {
     expect(event.args.extraBits).to.equal(BigInt(proof.extraBits));
     expect(before - (await ethers.provider.getBalance(alice.address))).to.equal(paid + gas);
     expect(await ethers.provider.getBalance(address)).to.equal(paid);
-    expect(await prints.tokenURI(4)).to.equal('https://hashprints.example/meta/4');
+    expect(await prints.tokenURI(4)).to.equal(`https://hashprints.example/meta/4?seed=0x${proof.hash}&d=16`);
+    expect(await prints.difficultyOf(4)).to.equal(16n);
+    await expect(prints.tokenURI(5)).to.be.revertedWithCustomError(prints, 'ERC721NonexistentToken');
   });
 
   it('rejects weak proofs, stolen proofs, reused proofs and underpayment', async () => {
@@ -118,6 +120,10 @@ describe('HashPrints', function () {
       nonce = proof.nonce + 1;
       await prints.connect(owner).pressArtistProof(proof.nonce);
       expect(await prints.ownerOf(i)).to.equal(owner.address);
+      expect(await prints.difficultyOf(i)).to.equal(16n);
+      if (i === 2) {
+        await expect(prints.connect(owner).pressArtistProof(proof.nonce)).to.be.revertedWithCustomError(prints, 'ProofAlreadyUsed');
+      }
     }
     const extra = await grindFor(address, owner.address, 16, { startNonce: nonce });
     await expect(prints.connect(owner).pressArtistProof(extra.nonce)).to.be.revertedWithCustomError(prints, 'SoldOut');
@@ -126,9 +132,67 @@ describe('HashPrints', function () {
       .to.be.revertedWithCustomError(prints, 'OwnableUnauthorizedAccount');
   });
 
+  it('blocks a contract minter from re-entering past the wallet limit', async () => {
+    const { prints, owner, address } = await deploy();
+    await prints.connect(owner).openPress();
+    const attacker = await ethers.deployContract('AttackMinter', [address]);
+    const who = await attacker.getAddress();
+    const nonces = [];
+    let n = 0;
+    for (let i = 0; i < 3; i++) {
+      const p = await grindFor(address, who, 16, { startNonce: n });
+      nonces.push(p.nonce);
+      n = p.nonce + 1;
+    }
+    const per = FLOOR * 4n;
+    // Re-entering for a third print reverts the whole transaction.
+    await expect(attacker.go(nonces, per, false, { value: per * 3n })).to.be.revertedWithCustomError(prints, 'WalletLimitReached');
+    expect(await prints.totalSupply()).to.equal(0n);
+    // Re-entering with the same proof is caught too.
+    await expect(attacker.go([nonces[0], nonces[0]], per, false, { value: per * 2n })).to.be.revertedWithCustomError(prints, 'ProofAlreadyUsed');
+    // Two distinct proofs via re-entry is just two legal mints, each charged correctly.
+    await attacker.go(nonces.slice(0, 2), per, false, { value: per * 2n });
+    expect(await prints.balanceOf(who)).to.equal(2n);
+    expect(await prints.pressedBy(who)).to.equal(2n);
+    const paid = await ethers.provider.getBalance(address);
+    expect(paid).to.be.lessThanOrEqual(per * 2n);
+    expect(paid).to.be.greaterThanOrEqual(FLOOR * 2n);
+  });
+
+  it('a minter that refuses its refund cannot mint with overpayment', async () => {
+    const { prints, owner, address } = await deploy();
+    await prints.connect(owner).openPress();
+    const attacker = await ethers.deployContract('AttackMinter', [address]);
+    const p = await grindFor(address, await attacker.getAddress(), 16);
+    await expect(attacker.go([p.nonce], FLOOR * 4n, true, { value: FLOOR * 4n }))
+      .to.be.revertedWithCustomError(prints, 'TransferFailed');
+    // Exact payment needs no refund, so it goes through.
+    await time.increase(HP.CONFIG.decaySeconds);
+    await attacker.go([p.nonce], FLOOR, true, { value: FLOOR });
+    expect(await prints.balanceOf(await attacker.getAddress())).to.equal(1n);
+  });
+
+  it('base URI can be locked for good', async () => {
+    const { prints, owner, alice } = await deploy();
+    await expect(prints.connect(alice).lockBaseURI()).to.be.revertedWithCustomError(prints, 'OwnableUnauthorizedAccount');
+    await prints.connect(owner).setBaseURI('https://hashprints.vercel.app/api/meta/');
+    await expect(prints.connect(owner).lockBaseURI()).to.emit(prints, 'BaseURILocked').withArgs('https://hashprints.vercel.app/api/meta/');
+    expect(await prints.baseURILocked()).to.equal(true);
+    await expect(prints.connect(owner).setBaseURI('https://evil.example/')).to.be.revertedWithCustomError(prints, 'BaseURIIsLocked');
+  });
+
+  it('ownership transfers in two steps', async () => {
+    const { prints, owner, alice } = await deploy();
+    await prints.connect(owner).transferOwnership(alice.address);
+    expect(await prints.owner()).to.equal(owner.address); // not yet
+    expect(await prints.pendingOwner()).to.equal(alice.address);
+    await prints.connect(alice).acceptOwnership();
+    expect(await prints.owner()).to.equal(alice.address);
+  });
+
   it('owner controls: floor locked once open, withdraw', async () => {
     const { prints, owner, alice, address } = await deploy();
-    await prints.connect(owner).setFloorPrice(FLOOR * 2n);
+    await expect(prints.connect(owner).setFloorPrice(FLOOR * 2n)).to.emit(prints, 'FloorPriceSet').withArgs(FLOOR * 2n);
     await prints.connect(owner).setFloorPrice(FLOOR);
     await prints.connect(owner).openPress();
     await expect(prints.connect(owner).setFloorPrice(1n)).to.be.revertedWithCustomError(prints, 'PressAlreadyOpen');
@@ -138,6 +202,7 @@ describe('HashPrints', function () {
     await prints.connect(alice).press(proof.nonce, { value: FLOOR * 4n });
     const bal = await ethers.provider.getBalance(address);
     await expect(prints.connect(alice).withdraw(alice.address)).to.be.revertedWithCustomError(prints, 'OwnableUnauthorizedAccount');
+    await expect(prints.connect(owner).withdraw(ethers.ZeroAddress)).to.be.revertedWithCustomError(prints, 'ZeroAddress');
     await expect(prints.connect(owner).withdraw(owner.address)).to.changeEtherBalance(owner, bal);
   });
 
@@ -172,5 +237,7 @@ describe('HashPrints', function () {
     }
     expect(await prints.difficulty()).to.equal(17n);
     expect(await prints.totalSupply()).to.equal(666n);
+    expect(await prints.difficultyOf(336)).to.equal(16n);
+    expect(await prints.difficultyOf(669)).to.equal(16n);
   });
 });

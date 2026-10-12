@@ -263,7 +263,7 @@
         <div><dt>Limit</dt><dd>2 per wallet</dd></div>
         <div><dt>Standard</dt><dd>ERC-721 · Ethereum mainnet</dd></div>
         <div><dt>Format</dt><dd>32 × 32 px · Paper &amp; Night editions</dd></div>
-        <div><dt>Status</dt><dd>Contract written &amp; tested · not deployed</dd></div>
+        <div><dt>Status</dt><dd>Tested &amp; internally reviewed · not deployed</dd></div>
       </dl>
     </div>
   </div>
@@ -437,7 +437,7 @@
     <div class="kicker">05 · Contract</div>
     <h2>On-chain, in the open.</h2>
     <p class="lede">The contract is a standard OpenZeppelin ERC-721 with the press built in. Its tests check that the website's grind and price maths match the contract bit for bit.</p>
-    <div class="warn"><b>Not deployed, not audited.</b> The contract is written and tested but has not been deployed to mainnet or audited. Everything on this page runs in simulation. If it goes live, the address will appear here.</div>
+    <div class="warn"><b>Not deployed. Internally reviewed, not professionally audited.</b> The contract has 12 tests (including re-entrancy and refund attacks), a Slither static-analysis pass and a manual review. That isn't the same as an audit by an independent firm, which a mainnet launch should still get. Everything on this page runs in simulation. If it goes live, the address will appear here.</div>
     <div class="cols-2">
       <div>
         <h3>Press interface</h3>
@@ -452,7 +452,9 @@ difficulty()      16 + run / 2
 priceFor(extra)   floor + premium(t) &gt;&gt; extra
 currentPrice()    priceFor(0)
 seedOf(tokenId)   the print's hash
-pressedBy(wallet) prints pressed (max 2)</pre>
+pressedBy(wallet) prints pressed (max 2)
+tokenURI(id)      &lt;base&gt;id?seed=…&amp;d=…
+lockBaseURI()     freezes metadata, one-way</pre>
         <p><a href="https://github.com/oopsitsfay/lessons/blob/claude/fervent-babbage-e0f7cf/hashprints/contracts/HashPrints.sol">Read HashPrints.sol on GitHub →</a></p>
       </div>
       <div class="table-scroll">
@@ -467,7 +469,7 @@ pressedBy(wallet) prints pressed (max 2)</pre>
             <tr><td>START_MULTIPLIER</td><td class="num">4×</td></tr>
             <tr><td>DECAY</td><td class="num">33 min</td></tr>
             <tr><td>BASE_DIFFICULTY</td><td class="num">16 bits</td></tr>
-            <tr><td>Gas per press</td><td class="num">≈ 198k</td></tr>
+            <tr><td>Gas per press</td><td class="num">≈ 133k</td></tr>
           </tbody>
         </table>
         <p style="font-size:14px;color:var(--ink-2);margin-top:16px">The floor price can only change <i>before</i> the press opens. After that, the pricing rules are fixed in code.</p>
@@ -480,13 +482,14 @@ pressedBy(wallet) prints pressed (max 2)</pre>
   <div class="wrap faq">
     <div class="kicker">06 · FAQ</div>
     <h2 style="margin-bottom:24px">Questions.</h2>
-    <details><summary>Is the mint live?</summary><p>Not yet. The contract is written and tested but not deployed or audited. The simulator above uses the same grind and price maths, so you can try the full experience without spending anything.</p></details>
+    <details><summary>Is the mint live?</summary><p>Not yet. The contract is tested and internally reviewed, but not deployed or professionally audited. The simulator above uses the same grind and price maths, so you can try the full experience without spending anything.</p></details>
     <details><summary>Why 0.000315 ETH?</summary><p>The target price is $0.80. At ETH ≈ $2,540 (October 12, 2026) that works out to 0.000315 ETH. The price is fixed in ETH once the press opens, so its dollar value moves with the market.</p></details>
-    <details><summary>What about gas?</summary><p>A press uses about 198,000 gas. At 0.3 gwei that's about $0.15, and at 1 gwei about $0.50. When the network is busy, gas can cost more than the print itself.</p></details>
+    <details><summary>What about gas?</summary><p>A press uses about 133,000 gas, cut by a third by packing the contract's storage. At 0.3 gwei that's about $0.10, and at 1 gwei about $0.34. When the network is busy, gas can still cost more than the print itself.</p></details>
     <details><summary>Why max two per wallet?</summary><p>So the edition spreads out. It isn't sybil-proof (nothing on-chain is), but each extra wallet needs its own grind, because proofs are bound to the address that ground them.</p></details>
     <details><summary>Can bots or GPUs grind faster?</summary><p>Yes, and that's part of the experiment. Work works like a currency: someone with a fast machine can grind gold or skip the Dutch premium. For everyone else, waiting does the same job. A typical laptop finds a valid 16-bit proof in under a second and a Gold Leaf proof in a few seconds.</p></details>
     <details><summary>Can I choose what my print looks like?</summary><p>Sort of. Every nonce gives a different hash and so a different print. You can keep grinding until a valid plate appears that you like, but you can't steer it. And if the run fills up while you're picky, the next run is harder.</p></details>
-    <details><summary>What is stored on-chain?</summary><p>Each token's 32-byte seed and the difficulty it was pressed at. The art is rendered deterministically from the seed by the open-source renderer (hashprints.js), so anyone can redraw any print from chain data alone.</p></details>
+    <details><summary>What is stored on-chain?</summary><p>Each token's 32-byte seed. Its difficulty follows from its token id. The art is rendered deterministically from the seed by the open-source renderer (hashprints.js), so anyone can redraw any print from chain data alone.</p></details>
+    <details><summary>How do marketplaces see the art?</summary><p>The contract's <code>tokenURI</code> points at this site's metadata API and carries the on-chain seed in the URL, for example <code>/api/meta/42?seed=0x…&amp;d=16</code>. The API renders the traits and an SVG image from that seed alone, so it never needs to read the chain or keep a database. Once the base URI is set, the owner can lock it permanently with <code>lockBaseURI()</code>.</p></details>
     <details><summary>What are artist proofs?</summary><p>Tokens #1–3 are reserved for the artist. They're free but still need a valid 16-bit proof. Public prints start at #4.</p></details>
   </div>
 </section>
@@ -502,7 +505,7 @@ pressedBy(wallet) prints pressed (max 2)</pre>
 <dialog id="inspect">
   <figure class="frame"><canvas class="print" id="inspectPrint" width="32" height="32"></canvas></figure>
   <div class="table-scroll"><table id="inspectTable"></table></div>
-  <div class="row"><button class="btn ghost" id="inspectPng" type="button">PNG</button><button class="btn ghost" id="inspectSvg" type="button">SVG</button><button class="btn" id="inspectClose" type="button">Close</button></div>
+  <div class="row"><a class="btn ghost" id="inspectOpen" href="#">Page</a><button class="btn ghost" id="inspectPng" type="button">PNG</button><button class="btn ghost" id="inspectSvg" type="button">SVG</button><button class="btn" id="inspectClose" type="button">Close</button></div>
 </dialog>
 
 <script src="hashprints.js"></script>
