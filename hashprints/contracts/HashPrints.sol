@@ -6,28 +6,26 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-/// @title HashPrints — 3,333 prints pressed from proof-of-work.
-/// @notice EXPERIMENTAL. Internally reviewed, not professionally audited. Max two public prints per wallet.
-///   Minting ("pressing") takes two things:
-///   1. Grind: a nonce such that keccak256(abi.encode(this, minter, nonce)) has at least
-///      `difficulty()` leading zero bits. The hash becomes the print's seed.
-///   2. Press: ETH at a Dutch price. Each run of 333 opens at 4x the floor and cools
-///      linearly to the floor over 33 minutes. Each zero bit beyond the requirement
-///      halves the premium, so extra work buys a cheaper (and rarer) print.
+/// @title HashPrints — pixel prints pressed from proof-of-work.
+/// @notice EXPERIMENTAL. Internally reviewed, not professionally audited.
+///   Minting ("pressing") needs a nonce such that keccak256(abi.encode(this, minter, nonce))
+///   has at least `difficulty()` leading zero bits, plus exactly `price()` in ETH (gas on top).
+///   The hash becomes the print's seed. Extra zero bits make a rarer print, never a cheaper one.
+///   Supply shape is set at deploy time, so the same code runs the main 3,333 edition
+///   (10 runs × 333 + 3 artist proofs) and small live tests such as Test HashPrint (2 × 5).
 contract HashPrints is ERC721, Ownable2Step {
-    uint256 public constant MAX_SUPPLY = 3333;
-    uint256 public constant ARTIST_PROOFS = 3;
-    uint256 public constant RUN_SIZE = 333;
-    uint256 public constant RUNS = 10;
-    uint256 public constant START_MULTIPLIER = 4;
-    uint256 public constant DECAY = 33 minutes;
     uint256 public constant BASE_DIFFICULTY = 16;
     uint256 public constant MAX_PER_WALLET = 2;
 
+    uint256 public immutable RUN_SIZE;
+    uint256 public immutable RUNS;
+    uint256 public immutable ARTIST_PROOFS;
+    uint256 public immutable MAX_SUPPLY;
+
     // Everything the press reads on a mint lives in one slot.
     struct State {
-        uint128 floorPrice;
-        uint64 runStartedAt; // 0 while the press is closed
+        uint128 price;
+        uint64 openedAt; // 0 while the press is closed
         uint16 pressed; // public mints so far
         uint8 artistProofsPressed;
         bool baseURILocked;
@@ -45,46 +43,55 @@ contract HashPrints is ERC721, Ownable2Step {
     uint256 private constant COUNT_SHIFT = 248;
     uint256 private constant SEED_MASK = (1 << COUNT_SHIFT) - 1;
 
-    event PressOpened(uint256 floorPrice, uint256 at);
+    event PressOpened(uint256 price, uint256 at);
     event RunStarted(uint256 indexed run, uint256 difficulty, uint256 at);
     event Pressed(
-        uint256 indexed tokenId,
-        address indexed minter,
-        bytes32 seed,
-        uint256 run,
-        uint256 difficulty,
-        uint256 extraBits,
-        uint256 price
+        uint256 indexed tokenId, address indexed minter, bytes32 seed, uint256 run, uint256 difficulty, uint256 extraBits
     );
+    event PriceSet(uint256 price);
     event BaseURILocked(string baseURI);
-    event FloorPriceSet(uint256 floorPrice);
 
     error PressClosed();
     error PressAlreadyOpen();
     error SoldOut();
     error InsufficientWork(uint256 bits, uint256 required);
     error ProofAlreadyUsed();
-    error Underpaid(uint256 price, uint256 sent);
+    error WrongPayment(uint256 price, uint256 sent);
     error WalletLimitReached();
     error TransferFailed();
     error BaseURIIsLocked();
-    error FloorTooHigh();
+    error BadConfig();
     error ZeroAddress();
 
-    constructor(uint256 floorPrice_, string memory baseURI_) ERC721("HashPrints", "HASHPRINT") Ownable(msg.sender) {
-        if (floorPrice_ > type(uint128).max) revert FloorTooHigh();
-        _state.floorPrice = uint128(floorPrice_);
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 price_,
+        string memory baseURI_,
+        uint256 runSize_,
+        uint256 runs_,
+        uint256 artistProofs_
+    ) ERC721(name_, symbol_) Ownable(msg.sender) {
+        if (
+            runSize_ == 0 || runs_ == 0 || runSize_ * runs_ > type(uint16).max || artistProofs_ > type(uint8).max
+                || price_ > type(uint128).max
+        ) revert BadConfig();
+        RUN_SIZE = runSize_;
+        RUNS = runs_;
+        ARTIST_PROOFS = artistProofs_;
+        MAX_SUPPLY = runSize_ * runs_ + artistProofs_;
+        _state.price = uint128(price_);
         _baseTokenURI = baseURI_;
     }
 
     // ------------------------------------------------------------------ views
 
-    function floorPrice() external view returns (uint256) {
-        return _state.floorPrice;
+    function price() external view returns (uint256) {
+        return _state.price;
     }
 
-    function runStartedAt() external view returns (uint256) {
-        return _state.runStartedAt;
+    function openedAt() external view returns (uint256) {
+        return _state.openedAt;
     }
 
     function pressed() external view returns (uint256) {
@@ -111,7 +118,7 @@ contract HashPrints is ERC721, Ownable2Step {
         return _state.pressed / RUN_SIZE;
     }
 
-    /// @notice Required leading zero bits: 16, rising one bit every two runs (to 20).
+    /// @notice Required leading zero bits: 16, rising one bit every two runs.
     function difficulty() public view returns (uint256) {
         return _difficultyForRun(currentRun());
     }
@@ -138,17 +145,6 @@ contract HashPrints is ERC721, Ownable2Step {
         }
     }
 
-    /// @notice Price right now for a proof with `extraBits` zero bits beyond the requirement.
-    function priceFor(uint256 extraBits) public view returns (uint256) {
-        State memory s = _state;
-        if (s.runStartedAt == 0) revert PressClosed();
-        return _priceFor(s, extraBits);
-    }
-
-    function currentPrice() external view returns (uint256) {
-        return priceFor(0);
-    }
-
     /// @notice `<baseURI><id>?seed=<seed>&d=<difficulty>` — the seed comes from chain, so the
     /// metadata server can render traits without trusting anything but this URL.
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
@@ -165,11 +161,12 @@ contract HashPrints is ERC721, Ownable2Step {
 
     // ------------------------------------------------------------------ press
 
-    /// @notice Mint one print with a ground nonce. Overpayment is refunded.
+    /// @notice Mint one print with a ground nonce. Send exactly `price()`.
     function press(uint256 nonce) external payable returns (uint256 tokenId) {
         State memory s = _state;
-        if (s.runStartedAt == 0) revert PressClosed();
+        if (s.openedAt == 0) revert PressClosed();
         if (s.pressed >= RUN_SIZE * RUNS) revert SoldOut();
+        if (msg.value != s.price) revert WrongPayment(s.price, msg.value);
 
         uint256 wallet = _wallet[msg.sender];
         uint256 count = wallet >> COUNT_SHIFT;
@@ -182,31 +179,20 @@ contract HashPrints is ERC721, Ownable2Step {
         if (bits < required) revert InsufficientWork(bits, required);
         if (count != 0 && (wallet & SEED_MASK) == uint256(seed)) revert ProofAlreadyUsed();
 
-        uint256 extraBits = bits - required;
-        uint256 price = _priceFor(s, extraBits);
-        if (msg.value < price) revert Underpaid(price, msg.value);
-
         // Effects. Keep the first seed; only the count changes on the second press.
         _wallet[msg.sender] = count == 0 ? (1 << COUNT_SHIFT) | uint256(seed) : wallet + (1 << COUNT_SHIFT);
         s.pressed += 1;
-        tokenId = ARTIST_PROOFS + s.pressed; // ids 1-3 are artist proofs
+        tokenId = ARTIST_PROOFS + s.pressed; // artist proofs take the first ids
         seedOf[tokenId] = seed;
-
-        // Selling out a run re-inks the press: next run opens hot, harder every two runs.
-        if (s.pressed % RUN_SIZE == 0 && s.pressed < RUN_SIZE * RUNS) {
-            s.runStartedAt = uint64(block.timestamp);
-            emit RunStarted(run + 1, _difficultyForRun(run + 1), block.timestamp);
-        }
         _state = s;
 
-        emit Pressed(tokenId, msg.sender, seed, run, required, extraBits, price);
-
-        // Interactions.
-        _safeMint(msg.sender, tokenId);
-        if (msg.value > price) {
-            (bool ok,) = msg.sender.call{value: msg.value - price}("");
-            if (!ok) revert TransferFailed();
+        if (s.pressed % RUN_SIZE == 0 && s.pressed < RUN_SIZE * RUNS) {
+            emit RunStarted(run + 1, _difficultyForRun(run + 1), block.timestamp);
         }
+        emit Pressed(tokenId, msg.sender, seed, run, required, bits - required);
+
+        // Interaction last.
+        _safeMint(msg.sender, tokenId);
     }
 
     // ------------------------------------------------------------------ owner
@@ -224,23 +210,23 @@ contract HashPrints is ERC721, Ownable2Step {
         tokenId = done + 1;
         _state.artistProofsPressed = uint8(tokenId);
         seedOf[tokenId] = seed;
-        emit Pressed(tokenId, msg.sender, seed, 0, BASE_DIFFICULTY, bits - BASE_DIFFICULTY, 0);
+        emit Pressed(tokenId, msg.sender, seed, 0, BASE_DIFFICULTY, bits - BASE_DIFFICULTY);
         _safeMint(msg.sender, tokenId);
     }
 
     function openPress() external onlyOwner {
-        if (_state.runStartedAt != 0) revert PressAlreadyOpen();
-        _state.runStartedAt = uint64(block.timestamp);
-        emit PressOpened(_state.floorPrice, block.timestamp);
+        if (_state.openedAt != 0) revert PressAlreadyOpen();
+        _state.openedAt = uint64(block.timestamp);
+        emit PressOpened(_state.price, block.timestamp);
         emit RunStarted(0, BASE_DIFFICULTY, block.timestamp);
     }
 
-    /// @notice The floor can only be set before the press opens, so buyers know it's fixed.
-    function setFloorPrice(uint256 floorPrice_) external onlyOwner {
-        if (_state.runStartedAt != 0) revert PressAlreadyOpen();
-        if (floorPrice_ > type(uint128).max) revert FloorTooHigh();
-        _state.floorPrice = uint128(floorPrice_);
-        emit FloorPriceSet(floorPrice_);
+    /// @notice The price can only be set before the press opens, so every minter pays the same.
+    function setPrice(uint256 price_) external onlyOwner {
+        if (_state.openedAt != 0) revert PressAlreadyOpen();
+        if (price_ > type(uint128).max) revert BadConfig();
+        _state.price = uint128(price_);
+        emit PriceSet(price_);
     }
 
     function setBaseURI(string calldata baseURI_) external onlyOwner {
@@ -264,13 +250,5 @@ contract HashPrints is ERC721, Ownable2Step {
 
     function _difficultyForRun(uint256 run) private pure returns (uint256) {
         return BASE_DIFFICULTY + run / 2;
-    }
-
-    function _priceFor(State memory s, uint256 extraBits) private view returns (uint256) {
-        uint256 elapsed = block.timestamp - s.runStartedAt;
-        uint256 floor = s.floorPrice;
-        uint256 premium = elapsed >= DECAY ? 0 : (floor * (START_MULTIPLIER - 1) * (DECAY - elapsed)) / DECAY;
-        premium = extraBits >= 256 ? 0 : premium >> extraBits;
-        return floor + premium;
     }
 }

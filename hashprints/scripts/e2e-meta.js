@@ -4,10 +4,10 @@ const HP = require('../site/hashprints');
 const meta = require('../site/api/meta/[id].js');
 (async () => {
   const [, alice] = await ethers.getSigners();
-  const prints = await ethers.deployContract('HashPrints', [HP.CONFIG.floorWei, 'https://hashprints.vercel.app/api/meta/']);
+  const prints = await ethers.deployContract('HashPrints', Object.values((({ name, symbol, priceWei, baseURI, runSize, runs, artistProofs }) => ({ name, symbol, priceWei, baseURI, runSize, runs, artistProofs }))(HP.COLLECTIONS.main)));
   await prints.openPress();
   const proof = await HP.grind({ contract: await prints.getAddress(), minter: alice.address, difficulty: 16 });
-  await prints.connect(alice).press(proof.nonce, { value: HP.CONFIG.floorWei * 4n });
+  await prints.connect(alice).press(proof.nonce, { value: HP.CONFIG.priceWei });
   const uri = await prints.tokenURI(4);
   console.log('tokenURI', uri);
   const u = new URL(uri);

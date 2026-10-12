@@ -9,6 +9,8 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   };
+  const eth = (wei) => (Number(wei) / 1e18).toFixed(6);
+  const usd = (wei) => '$' + ((Number(wei) / 1e18) * C.ethUsdSnapshot).toFixed(2);
 
   // ------------------------------------------------------------ theme
   const root = document.documentElement;
@@ -78,7 +80,7 @@
       { canvas: $('heroPaper'), cap: $('heroPaperCap'), edition: 'Paper' },
       { canvas: $('heroNight'), cap: $('heroNightCap'), edition: 'Night' },
     ];
-    let tries = 0, nonce = 0;
+    let ticks = 0, nonce = 0;
     function candidate(edition) {
       for (;;) {
         const seed = randomSeed();
@@ -86,22 +88,22 @@
         if (art.traits.Edition === edition) return { seed, art };
       }
     }
-    function frame(lock) {
+    function frame(found) {
       for (const s of slots) {
         const { seed, art } = candidate(s.edition);
         paint(s.canvas, art);
-        s.cap.textContent = lock ? `#${fmt(4 + (nonce % 3330))} · ${art.traits.Press}` : `0x${seed.slice(0, 8)}…`;
-        if (!lock) $('grindline').textContent = `nonce ${fmt(nonce)} → 0x${seed} · ${HP.leadingZeroBits(HP.fromHex(seed))} zero bits`;
+        s.cap.textContent = found ? art.traits.Style : `0x${seed.slice(0, 8)}…`;
+        if (!found) $('grindline').textContent = `nonce ${fmt(nonce)} · 0x${seed} · ${HP.leadingZeroBits(HP.fromHex(seed))} zero bits`;
       }
-      if (lock) $('grindline').textContent = `✓ plate found after ${fmt(nonce)} tries · pressed`;
+      if (found) $('grindline').textContent = `found a valid hash after ${fmt(nonce)} tries`;
     }
     if (reduceMotion) { frame(true); return; }
     setInterval(() => {
-      tries++;
+      ticks++;
       nonce += 3000 + Math.floor(Math.random() * 9000);
-      const lock = tries % 16 === 0;
-      if (tries % 16 > 0 && tries % 16 < 12) frame(false);
-      else if (lock) { frame(true); nonce = 0; }
+      const step = ticks % 16;
+      if (step > 0 && step < 12) frame(false);
+      else if (step === 0) { frame(true); nonce = 0; }
     }, 140);
   })();
 
@@ -109,28 +111,27 @@
   const anatomy = findSample('anatomy', 18, (a) => a.traits.Edition === 'Paper' && a.traits.Registration !== 'Tight'
     && parseInt(a.traits.Coverage) > 18 && a.traits.Symmetry !== 'None');
   paint($('anatomyPrint'), anatomy.art);
-  paint($('edPaper'), findSample('paper', 16, (a) => a.traits.Edition === 'Paper' && a.traits.Press === 'Circuit').art);
-  paint($('edNight'), findSample('night', 16, (a) => a.traits.Edition === 'Night' && a.traits.Press === 'Bloom').art);
+  paint($('edPaper'), findSample('paper', 16, (a) => a.traits.Edition === 'Paper' && a.traits.Style === 'Circuit').art);
+  paint($('edNight'), findSample('night', 16, (a) => a.traits.Edition === 'Night' && a.traits.Style === 'Bloom').art);
   $('risoSwatches').innerHTML = Object.entries(HP.RISO).map(([n, c]) => `<i title="${n}" style="background:${c}"></i>`).join('');
   $('neonSwatches').innerHTML = Object.entries(HP.NEON).map(([n, c]) => `<i title="${n}" style="background:${c}"></i>`).join('');
 
-  const PRESS_NOTES = {
-    Circuit: 'Right-angle walkers with solder joints at each turn.',
-    Zigzag: '45° walkers that swerve and double back.',
-    Shards: 'Straight cuts between random points.',
-    Rain: 'Dashed drips with a bright head.',
-    Weave: 'Ink A runs across, ink B down, and they overprint where they cross.',
-    Bloom: 'Rays burst from the centre to the plate edge.',
+  const STYLE_NOTES = {
+    Circuit: 'Right-angle paths with a dot at each turn.',
+    Zigzag: '45° paths that change direction.',
+    Shards: 'Straight lines between random points.',
+    Rain: 'Short dashed vertical lines.',
+    Weave: 'Horizontal and vertical dashed lines.',
+    Bloom: 'Lines from the centre out to the edges.',
   };
-  $('presses').innerHTML = '';
-  HP.PRESSES.forEach((press, i) => {
-    const s = findSample(`press-${press}`, 16, (a) => a.traits.Press === press && a.traits.Edition === (i % 2 ? 'Night' : 'Paper'));
+  HP.PRESSES.forEach((style, i) => {
+    const s = findSample(`press-${style}`, 16, (a) => a.traits.Style === style && a.traits.Edition === (i % 2 ? 'Night' : 'Paper'));
     const fig = document.createElement('figure');
     const c = document.createElement('canvas');
     c.className = 'print';
     paint(c, s.art);
     fig.appendChild(c);
-    fig.insertAdjacentHTML('beforeend', `<figcaption>${press}<span>${PRESS_NOTES[press]}</span></figcaption>`);
+    fig.insertAdjacentHTML('beforeend', `<figcaption>${style}<span>${STYLE_NOTES[style]}</span></figcaption>`);
     $('presses').appendChild(fig);
   });
 
@@ -138,10 +139,10 @@
   let inspected = null;
   function inspect(seed, difficulty, title, id) {
     const art = HP.render(seed, difficulty);
-    $('inspectOpen').href = `print.html?${id ? `id=${id}&` : ''}seed=0x${seed}&d=${difficulty}`;
     inspected = { art, name: title.replace(/[^\w-]+/g, '-').toLowerCase() };
+    $('inspectOpen').href = `print.html?${id ? `id=${id}&` : ''}seed=0x${seed}&d=${difficulty}`;
     paint($('inspectPrint'), art);
-    const rows = [['Print', title], ...Object.entries(art.traits), ['Seed', `0x${seed.slice(0, 18)}…`]];
+    const rows = [['Token', title], ...Object.entries(art.traits), ['Seed', `0x${seed.slice(0, 18)}…`]];
     $('inspectTable').innerHTML = rows.map(([k, v]) => `<tr><th style="border-bottom:1px solid var(--rule)">${k}</th><td class="num">${v}</td></tr>`).join('');
     $('inspect').showModal();
   }
@@ -166,14 +167,13 @@
     container.appendChild(b);
   }
 
-  const samples = Array.from({ length: 24 }, (_, i) => {
+  for (let i = 0; i < 24; i++) {
     const bits = i === 17 ? 24 : i % 9 === 4 ? 20 : 16 + (i % 3);
-    return { seed: sampleSeed(`gallery-${i}`, bits), id: 4 + i * 139 };
-  });
-  samples.forEach(({ seed, id }) => {
+    const seed = sampleSeed(`gallery-${i}`, bits);
+    const id = 4 + i * 139;
     const art = HP.render(seed, 16);
-    thumb($('gallery'), { seed, difficulty: 16, id, title: `HashPrint #${id}`, left: `#${id}`, right: art.traits.Rarity === 'Common' ? art.traits.Press : art.traits.Rarity });
-  });
+    thumb($('gallery'), { seed, difficulty: 16, id, title: `HashPrint #${id}`, left: `#${id}`, right: art.traits.Rarity === 'Common' ? art.traits.Style : art.traits.Rarity });
+  }
   document.querySelectorAll('[data-filter]').forEach((chip) => {
     chip.onclick = () => {
       document.querySelectorAll('[data-filter]').forEach((c) => c.setAttribute('aria-pressed', c === chip));
@@ -184,96 +184,21 @@
     };
   });
 
-  // ------------------------------------------------------------ price chart
-  const SERIES = [
-    { extra: 0, name: 'First proof', color: 'var(--s1)' },
-    { extra: 1, name: '+1 bit', color: 'var(--s2)' },
-    { extra: 2, name: '+2 bits', color: 'var(--s3)' },
-    { extra: 4, name: '+4 bits (gold)', color: 'var(--s4)' },
-  ];
-  const eth = (wei) => Number(wei) / 1e18;
-  const ethStr = (wei) => eth(wei).toFixed(6);
-  const usdStr = (wei) => '$' + (eth(wei) * C.ethUsdSnapshot).toFixed(2);
-
-  (function chart() {
-    const W = 960, H = 320, m = { l: 72, r: 20, t: 16, b: 40 };
-    const maxMin = 40, yMax = eth(C.floorWei) * 4.3;
-    const x = (min) => m.l + (min / maxMin) * (W - m.l - m.r);
-    const y = (v) => m.t + (1 - v / yMax) * (H - m.t - m.b);
-    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Press price falls from 4x the floor to the floor over 33 minutes; each extra zero bit halves the premium.">`;
-    for (let i = 0; i <= 4; i++) {
-      const v = (yMax / 4) * i;
-      svg += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--rule)" stroke-width="1"/>`;
-      svg += `<text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v.toFixed(5)}</text>`;
-    }
-    for (let t = 0; t <= maxMin; t += 5) svg += `<text x="${x(t)}" y="${H - m.b + 20}" text-anchor="middle">${t}m</text>`;
-    svg += `<line x1="${x(33)}" x2="${x(33)}" y1="${m.t}" y2="${H - m.b}" stroke="var(--muted)" stroke-dasharray="3 4"/>`;
-    svg += `<text x="${x(33) + 6}" y="${m.t + 12}">cooled · 33m</text>`;
-    svg += `<text x="${W - m.r}" y="${y(eth(C.floorWei)) + 16}" text-anchor="end" class="lbl">floor ${ethStr(C.floorWei)} ETH ≈ ${usdStr(C.floorWei)}</text>`;
-    for (const s of SERIES) {
-      const pts = [];
-      for (let t = 0; t <= maxMin; t += 0.5) pts.push(`${x(t).toFixed(1)},${y(eth(HP.priceFor(t * 60, s.extra))).toFixed(1)}`);
-      svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round"/>`;
-      const v0 = eth(HP.priceFor(0, s.extra));
-      svg += `<text x="${x(0.6)}" y="${y(v0) - 6}" class="lbl">${s.name}</text>`;
-    }
-    svg += `<g id="hover" style="display:none"><line id="hoverLine" y1="${m.t}" y2="${H - m.b}" stroke="var(--ink)" stroke-width="1"/>`;
-    SERIES.forEach((s, i) => { svg += `<circle id="hoverDot${i}" r="5" fill="${s.color}" stroke="var(--paper)" stroke-width="2"/>`; });
-    svg += `</g><rect id="hit" x="${m.l}" y="${m.t}" width="${W - m.l - m.r}" height="${H - m.t - m.b}" fill="transparent"/></svg>`;
-    $('chart').innerHTML = svg;
-    $('legend').innerHTML = SERIES.map((s) => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join('');
-
-    const svgEl = $('chart').querySelector('svg');
-    const tip = $('tooltip');
-    const move = (clientX) => {
-      const r = svgEl.getBoundingClientRect();
-      const px = ((clientX - r.left) / r.width) * W;
-      const min = Math.max(0, Math.min(maxMin, ((px - m.l) / (W - m.l - m.r)) * maxMin));
-      $('hover').style.display = '';
-      $('hoverLine').setAttribute('x1', x(min));
-      $('hoverLine').setAttribute('x2', x(min));
-      SERIES.forEach((s, i) => {
-        const d = $('hoverDot' + i);
-        d.setAttribute('cx', x(min));
-        d.setAttribute('cy', y(eth(HP.priceFor(min * 60, s.extra))));
-      });
-      tip.innerHTML = `<b>${min.toFixed(1)} min into the run</b><br>` + SERIES.map((s) => {
-        const p = HP.priceFor(min * 60, s.extra);
-        return `<i style="background:${s.color}"></i>${s.name}: ${ethStr(p)} ETH (${usdStr(p)})`;
-      }).join('<br>');
-      tip.style.opacity = 1;
-      const box = $('chart').parentElement.getBoundingClientRect();
-      const left = clientX - box.left + 16;
-      tip.style.left = Math.min(left, box.width - tip.offsetWidth - 8) + 'px';
-      tip.style.top = (r.top - box.top + 24) + 'px';
-    };
-    const hide = () => { $('hover').style.display = 'none'; tip.style.opacity = 0; };
-    $('hit').addEventListener('mousemove', (e) => move(e.clientX));
-    $('hit').addEventListener('touchmove', (e) => move(e.touches[0].clientX), { passive: true });
-    $('hit').addEventListener('mouseleave', hide);
-    $('hit').addEventListener('touchend', hide);
-
-    const mins = [0, 5, 10, 20, 33];
-    $('priceTable').innerHTML = `<table><thead><tr><th>Minutes in</th>${SERIES.map((s) => `<th class="num">${s.name}</th>`).join('')}</tr></thead><tbody>` +
-      mins.map((t) => `<tr><td>${t}</td>${SERIES.map((s) => { const p = HP.priceFor(t * 60, s.extra); return `<td class="num">${ethStr(p)} ETH<br><span style="color:var(--muted)">${usdStr(p)}</span></td>`; }).join('')}</tr>`).join('') +
-      '</tbody></table>';
-  })();
-
   // ------------------------------------------------------------ run table
   const RATE = 150000;
   const humanTime = (s) => (s < 1 ? '< 1 s' : s < 90 ? `~${Math.round(s)} s` : s < 5400 ? `~${Math.round(s / 60)} min` : `~${(s / 3600).toFixed(1)} h`);
-  $('runTable').innerHTML = `<table><thead><tr><th>Run</th><th>Token ids</th><th class="num">Difficulty</th><th class="num">Avg. hashes</th><th class="num">Laptop time</th><th class="num">Gold Leaf time</th></tr></thead><tbody>` +
+  $('runTable').innerHTML = `<table><thead><tr><th>Run</th><th>Token ids</th><th class="num">Difficulty</th><th class="num">Avg. time</th><th class="num">Gold Leaf</th></tr></thead><tbody>` +
     Array.from({ length: C.runs }, (_, r) => {
       const d = HP.difficultyForRun(r);
       const from = C.artistProofs + r * C.runSize + 1;
-      return `<tr><td>${r + 1}</td><td>#${fmt(from)}–${fmt(from + C.runSize - 1)}</td><td class="num">${d} bits</td><td class="num">${fmt(2 ** d)}</td><td class="num">${humanTime(2 ** d / RATE)}</td><td class="num">${humanTime(2 ** (d + 4) / RATE)}</td></tr>`;
+      return `<tr><td>${r + 1}</td><td>#${fmt(from)}–${fmt(from + C.runSize - 1)}</td><td class="num">${d} bits</td><td class="num">${humanTime(2 ** d / RATE)}</td><td class="num">${humanTime(2 ** (d + 4) / RATE)}</td></tr>`;
     }).join('') + '</tbody></table>';
 
   // ------------------------------------------------------------ simulator
   const SIM_CONTRACT = '0x' + '4a5b9a1e7c0de'.padEnd(36, '0') + '3333';
   const isAddr = (a) => /^0x[0-9a-fA-F]{40}$/.test(a);
   const randomAddr = () => '0x' + HP.toHex(crypto.getRandomValues(new Uint8Array(20)));
-  let myPrints = store.get('hp.prints', []);
+  let myPrints = store.get('hp.prints.v2', []);
   let current = null;
   let worker = null;
 
@@ -284,55 +209,45 @@
     $('run').appendChild(o);
   }
   $('wallet').value = store.get('hp.wallet', null) || randomAddr();
+  $('roPrice').textContent = `${eth(C.priceWei)} ETH + gas`;
 
   const wallet = () => $('wallet').value.trim().toLowerCase();
-  const pressedBy = (w) => myPrints.filter((p) => p.wallet === w).length;
+  const mintedBy = (w) => myPrints.filter((p) => p.wallet === w).length;
 
   function refresh() {
-    const run = Number($('run').value);
-    const d = HP.difficultyForRun(run);
+    const d = HP.difficultyForRun(Number($('run').value));
     const aim = Number($('aim').value);
-    const mins = Number($('minutes').value);
-    $('minutesOut').textContent = mins;
     $('roDiff').textContent = `${d} bits`;
     $('roWork').textContent = `${fmt(2 ** (d + aim))} hashes · ${humanTime(2 ** (d + aim) / RATE)}`;
-    const base = HP.priceFor(mins * 60, 0);
-    $('roBase').textContent = `${ethStr(base)} ETH · ${usdStr(base)}`;
     const w = wallet();
-    const n = isAddr(w) ? pressedBy(w) : 0;
-    $('walletCount').textContent = isAddr(w) ? `${n} / ${C.maxPerWallet} pressed with this wallet` : 'Enter a 0x… address (40 hex characters)';
-    const grinding = !!worker;
-    $('grindBtn').disabled = grinding || !isAddr(w) || n >= C.maxPerWallet;
-    if (isAddr(w) && n >= C.maxPerWallet && !grinding) $('walletCount').textContent += ' · limit reached, generate a new wallet';
+    const n = isAddr(w) ? mintedBy(w) : 0;
+    $('walletCount').textContent = isAddr(w) ? `${n} / ${C.maxPerWallet} minted with this wallet` : 'Enter a 0x address (40 hex characters)';
+    if (isAddr(w) && n >= C.maxPerWallet && !worker) $('walletCount').textContent += '. Limit reached, use New for another wallet';
+    $('grindBtn').disabled = !!worker || !isAddr(w) || n >= C.maxPerWallet;
     if (current) showResult(current);
   }
-  ['run', 'aim', 'minutes'].forEach((id) => $(id).addEventListener('input', refresh));
+  ['run', 'aim'].forEach((id) => $(id).addEventListener('input', refresh));
   $('wallet').addEventListener('input', () => { if (isAddr(wallet())) store.set('hp.wallet', wallet()); refresh(); });
   $('randWallet').onclick = () => { $('wallet').value = randomAddr(); store.set('hp.wallet', wallet()); refresh(); };
 
   function showResult(r) {
     const art = HP.render(r.hash, r.difficulty);
     paint($('simPrint'), art);
-    const mins = Number($('minutes').value);
-    const price = HP.priceFor(mins * 60, r.extraBits);
-    const base = HP.priceFor(mins * 60, 0);
-    r.price = price.toString();
     $('simTraits').innerHTML = Object.entries(art.traits).map(([k, v]) =>
       `<span class="tag ${k === 'Rarity' && v !== 'Common' ? 'gold' : ''}">${k === 'Rarity' ? v : `${k}: ${v}`}</span>`).join('');
     $('resNonce').textContent = fmt(r.nonce);
     $('resBits').textContent = `${r.bits} (+${r.extraBits} extra)`;
-    $('resPrice').innerHTML = `${ethStr(price)} <small>ETH · ${usdStr(price)}</small>`;
-    $('resSaved').textContent = base > price ? `${ethStr(base - price)} ETH vs. first proof` : 'nothing (price has cooled to the floor)';
+    $('resPrice').innerHTML = `${eth(C.priceWei)} <small>ETH · ${usd(C.priceWei)} + gas</small>`;
     $('simResult').hidden = false;
-    $('pressBtn').disabled = r.pressed || pressedBy(r.wallet) >= C.maxPerWallet;
-    $('pressBtn').textContent = r.pressed ? `PRESSED #${r.tokenId}` : 'PRESS (simulated)';
+    $('pressBtn').disabled = r.minted || mintedBy(r.wallet) >= C.maxPerWallet;
+    $('pressBtn').textContent = r.minted ? `Minted #${r.tokenId}` : 'Mint (simulated)';
   }
 
-  function finishGrind(result, seconds, params) {
-    worker && worker.terminate && worker.terminate();
+  function finishSearch(result, seconds, params) {
+    if (worker && worker.terminate) worker.terminate();
     worker = null;
     $('stopBtn').disabled = true;
-    $('grindBtn').textContent = 'GRIND';
+    $('grindBtn').textContent = 'Start search';
     if (!result) {
       $('simStatus').textContent = 'Stopped.';
       refresh();
@@ -341,38 +256,37 @@
     const nonces = store.get('hp.nonces', {});
     nonces[params.minter] = Math.max(nonces[params.minter] || 0, result.nonce + 1);
     store.set('hp.nonces', nonces);
-    current = { ...result, difficulty: params.difficulty, wallet: params.minter, pressed: false };
-    $('simStatus').textContent = `✓ Plate found in ${seconds.toFixed(1)} s · 0x${result.hash}`;
+    current = { ...result, difficulty: params.difficulty, wallet: params.minter, minted: false };
+    $('simStatus').textContent = `Found in ${seconds.toFixed(1)} s · 0x${result.hash}`;
     refresh();
   }
 
   $('grindBtn').onclick = () => {
-    const run = Number($('run').value);
     const params = {
       contract: SIM_CONTRACT,
       minter: wallet(),
-      difficulty: HP.difficultyForRun(run),
+      difficulty: HP.difficultyForRun(Number($('run').value)),
       aim: Number($('aim').value),
       startNonce: store.get('hp.nonces', {})[wallet()] || 0,
     };
     current = null;
     $('simResult').hidden = true;
-    $('grindBtn').textContent = 'GRINDING…';
+    $('grindBtn').textContent = 'Searching…';
     $('stopBtn').disabled = false;
     const onProgress = ({ nonce, best, sample, rate }) => {
       paint($('simPrint'), HP.render(sample, 0));
-      $('simStatus').textContent = `nonce ${fmt(nonce)} · ${fmt(rate)} H/s · best ${best.bits} bits`;
+      $('simStatus').textContent = `nonce ${fmt(nonce)} · ${fmt(rate)} hashes/s · best so far ${best.bits} bits`;
     };
     try {
       worker = new Worker('grind-worker.js');
       worker.onmessage = (e) => {
         if (e.data.type === 'progress') onProgress(e.data);
-        else finishGrind(e.data.result, e.data.seconds, params);
+        else finishSearch(e.data.result, e.data.seconds, params);
       };
-      worker.onerror = () => { $('simStatus').textContent = 'Worker failed. Try reloading.'; finishGrind(null, 0, params); };
+      worker.onerror = () => { $('simStatus').textContent = 'Search worker failed. Try reloading the page.'; finishSearch(null, 0, params); };
       worker.postMessage({ type: 'start', params });
     } catch {
-      // Workers can't load from file:// in some browsers; grind on the main thread instead.
+      // Workers can't load from file:// in some browsers; search on the main thread instead.
       let stop = false;
       worker = { postMessage: () => { stop = true; } };
       const t0 = performance.now();
@@ -384,34 +298,37 @@
           await new Promise((r) => setTimeout(r, 0));
           return !stop;
         },
-      }).then((r) => finishGrind(r, (performance.now() - t0) / 1000, params));
+      }).then((r) => finishSearch(r, (performance.now() - t0) / 1000, params));
     }
     refresh();
   };
   $('stopBtn').onclick = () => worker && worker.postMessage({ type: 'stop' });
 
   $('pressBtn').onclick = () => {
-    if (!current || current.pressed || pressedBy(current.wallet) >= C.maxPerWallet) return;
-    current.pressed = true;
+    if (!current || current.minted || mintedBy(current.wallet) >= C.maxPerWallet) return;
+    current.minted = true;
     current.tokenId = C.artistProofs + 1 + myPrints.length;
-    myPrints.push({ tokenId: current.tokenId, wallet: current.wallet, hash: current.hash, difficulty: current.difficulty, nonce: current.nonce, price: current.price });
-    store.set('hp.prints', myPrints);
+    myPrints.push({ tokenId: current.tokenId, wallet: current.wallet, hash: current.hash, difficulty: current.difficulty, nonce: current.nonce });
+    store.set('hp.prints.v2', myPrints);
     renderMine();
     refresh();
   };
-  $('pngBtn').onclick = () => current && downloadPng(HP.render(current.hash, current.difficulty), `hashprint-${current.tokenId || 'proof'}`);
+  $('pngBtn').onclick = () => current && downloadPng(HP.render(current.hash, current.difficulty), `hashprint-${current.tokenId || 'preview'}`);
 
   function renderMine() {
     const box = $('myPrints');
     box.innerHTML = '';
     if (!myPrints.length) {
-      box.innerHTML = '<p style="color:var(--muted);grid-column:1/-1">Nothing pressed yet.</p>';
+      box.innerHTML = '<p style="color:var(--muted);grid-column:1/-1">None yet.</p>';
       return;
     }
-    [...myPrints].reverse().forEach((p) => thumb(box, {
-      seed: p.hash, difficulty: p.difficulty, id: p.tokenId, title: `HashPrint #${p.tokenId} (simulated)`,
-      left: `#${p.tokenId}`, right: `${ethStr(BigInt(p.price))} Ξ`,
-    }));
+    [...myPrints].reverse().forEach((p) => {
+      const art = HP.render(p.hash, p.difficulty);
+      thumb(box, {
+        seed: p.hash, difficulty: p.difficulty, id: p.tokenId, title: `HashPrint #${p.tokenId} (simulated)`,
+        left: `#${p.tokenId}`, right: art.traits.Rarity === 'Common' ? art.traits.Style : art.traits.Rarity,
+      });
+    });
   }
 
   paint($('simPrint'), HP.render(sampleSeed('sim-idle', 16), 16));

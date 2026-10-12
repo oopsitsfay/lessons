@@ -49,19 +49,21 @@
     const id = Number(q.get('id'));
     const seed = (q.get('seed') || '').toLowerCase();
     const d = Number(q.get('d') || 16);
+    const shape = q.get('c') === 'test' ? HP.COLLECTIONS.test : HP.COLLECTIONS.main;
     const view = document.getElementById('view');
     if (!/^0x[0-9a-f]{64}$/.test(seed) || HP.leadingZeroBits(HP.fromHex(seed)) < d) {
       view.innerHTML = '<p class="err">This link doesn\'t point to a valid print. It needs a 64-character seed with enough zero bits.</p>';
       return;
     }
     const art = HP.render(seed, d);
-    const title = id >= 1 && id <= 3 ? `A/P ${id}` : id ? `#${id}` : 'Proof';
-    document.title = `HashPrint ${title}`;
+    const title = id >= 1 && id <= shape.artistProofs ? `A/P ${id}` : id ? `#${id}` : '';
+    const heading = `${shape.name} ${title}`.trim();
+    document.title = heading;
     view.innerHTML = `
       <div class="grid">
         <div class="frame"><canvas id="c"></canvas></div>
         <div>
-          <h1>HashPrint ${title}</h1>
+          <h1>${heading}</h1>
           <div class="sub">seed ${seed}</div>
           <table id="t"></table>
           <div class="btns"><button id="png" type="button">PNG</button><button id="svg" type="button">SVG</button><a class="btn" href="/#art">About the art</a></div>
@@ -72,7 +74,7 @@
     const ctx = c.getContext('2d');
     art.grid.forEach((row, y) => row.forEach((v, x) => { ctx.fillStyle = art.palette[v]; ctx.fillRect(x, y, 1, 1); }));
     const rows = Object.entries(art.traits);
-    if (id > 3) rows.push(['Run', Math.floor((id - 4) / 333) + 1]);
+    if (id > shape.artistProofs) rows.push(['Run', Math.floor((id - shape.artistProofs - 1) / shape.runSize) + 1]);
     rows.push(['Difficulty', `${d} bits`]);
     const t = document.getElementById('t');
     for (const [k, v] of rows) {

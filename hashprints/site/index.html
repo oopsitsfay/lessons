@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HashPrints</title>
-<meta name="description" content="HashPrints: 3,333 pixel prints pressed from proof-of-work on Ethereum. Your hash is the plate.">
+<meta name="description" content="HashPrints: 3,333 generative pixel prints on Ethereum. Each one is drawn from a proof-of-work hash found by its minter.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -13,21 +13,18 @@
     --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --ink-2: #4a463d; --muted: #7a7466;
     --rule: #d6cfbd; --pink: #ff48b0; --blue: #0078bf; --yellow: #ffe800; --gold: #b38b14;
     --accent: var(--pink); --accent-ink: #fff; --code: #e6dfcd;
-    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --paper: #0b0b10; --paper-2: #13131b; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c;
       --rule: #2a2a38; --accent: #c6ff00; --accent-ink: #000; --gold: #ffd700; --code: #17171f;
-      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --paper: #0b0b10; --paper-2: #13131b; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c;
     --rule: #2a2a38; --accent: #c6ff00; --accent-ink: #000; --gold: #ffd700; --code: #17171f;
-    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
     color-scheme: dark;
   }
 
@@ -150,18 +147,6 @@
   .step p { color: var(--ink-2); font-size: 15px; margin: 0; }
   @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } .step { border-right: 0; border-bottom: 1px solid var(--rule); } }
 
-  .chart-box { border: 1px solid var(--rule); padding: 20px; margin-bottom: 16px; position: relative; }
-  .chart-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
-  .legend { display: flex; gap: 16px; flex-wrap: wrap; font: 12px "JetBrains Mono", monospace; color: var(--ink-2); }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { width: 14px; height: 2px; display: inline-block; }
-  #chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-  #chart text { font: 11px "JetBrains Mono", monospace; fill: var(--muted); }
-  #chart .lbl { fill: var(--ink-2); }
-  .tooltip { position: absolute; pointer-events: none; background: var(--ink); color: var(--paper); font: 12px/1.5 "JetBrains Mono", monospace; padding: 8px 10px; opacity: 0; transition: opacity .1s; white-space: nowrap; z-index: 2; }
-  .tooltip i { display: inline-block; width: 8px; height: 8px; margin-right: 6px; }
-  details.table-view { margin: 0 0 56px; }
-  details.table-view summary { cursor: pointer; font: 13px "JetBrains Mono", monospace; color: var(--ink-2); }
 
   .sim { border: 2px solid var(--ink); display: grid; grid-template-columns: 1fr 1fr; }
   .sim-controls { padding: 28px; border-right: 2px solid var(--ink); }
@@ -210,11 +195,11 @@
   <div class="wrap">
     <a class="logo" href="#top">HASH<span>/</span>PRINTS</a>
     <div class="links">
-      <a href="#about">About</a><a href="#concept">Concept</a><a href="#art">The Art</a>
-      <a href="#mint">The Mint</a><a href="#contract">Contract</a><a href="#faq">FAQ</a>
+      <a href="#about">About</a><a href="#minting">Minting</a><a href="#art">Art</a>
+      <a href="#try">Try it</a><a href="#contract">Contract</a><a href="#faq">FAQ</a>
     </div>
     <button class="btn ghost theme-toggle" id="themeToggle" type="button">Night</button>
-    <a class="btn" href="#simulator">Mint</a>
+    <a class="btn" href="#try">Mint</a>
   </div>
 </nav>
 
@@ -222,26 +207,26 @@
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <div class="kicker">Proof-of-work prints · Ethereum</div>
+        <div class="kicker">Generative pixel art · Ethereum</div>
         <h1>Hash<em>Prints</em></h1>
-        <p class="lede">3,333 pixel prints pressed from proof-of-work. You grind for a hash, and the hash becomes the plate. The more work you put in, the less you pay.</p>
+        <p class="lede">3,333 pixel prints. To mint one, your browser searches for a hash that starts with enough zero bits. That hash is stored on-chain and is the only input to the artwork.</p>
         <div class="hero-actions">
-          <a class="btn" href="#simulator">Try the press →</a>
-          <a class="btn ghost" href="#concept">Read the concept</a>
+          <a class="btn" href="#try">Try the mint</a>
+          <a class="btn ghost" href="#minting">How it works</a>
         </div>
       </div>
-      <div class="hero-art" aria-label="Prints being ground live">
+      <div class="hero-art" aria-label="Example prints">
         <figure class="frame"><canvas class="print" id="heroPaper" width="32" height="32"></canvas><figcaption><b>Paper</b><span id="heroPaperCap"></span></figcaption></figure>
         <figure class="frame"><canvas class="print" id="heroNight" width="32" height="32"></canvas><figcaption><b>Night</b><span id="heroNightCap"></span></figcaption></figure>
-        <div class="grindline" id="grindline">grinding…</div>
+        <div class="grindline" id="grindline"></div>
       </div>
     </div>
     <div class="stats">
-      <div class="stat"><div class="k">Supply</div><div class="v">3,333</div><div class="s">10 runs × 333 + 3 A/P</div></div>
-      <div class="stat"><div class="k">Floor</div><div class="v" id="statFloor">0.000315 Ξ</div><div class="s">≈ $0.80</div></div>
-      <div class="stat"><div class="k">Per wallet</div><div class="v">2</div><div class="s">max public prints</div></div>
-      <div class="stat"><div class="k">Work</div><div class="v">16→20</div><div class="s">leading zero bits</div></div>
-      <div class="stat"><div class="k">Chain</div><div class="v">ETH</div><div class="s">Mainnet · not yet live</div></div>
+      <div class="stat"><div class="k">Mint price</div><div class="v">0.000315 ETH</div><div class="s">≈ $0.80 + gas</div></div>
+      <div class="stat"><div class="k">Supply</div><div class="v">3,333</div><div class="s">3,330 public · 3 artist proofs</div></div>
+      <div class="stat"><div class="k">Max per wallet</div><div class="v">2</div><div class="s">public mints</div></div>
+      <div class="stat"><div class="k">Difficulty</div><div class="v">16–20 bits</div><div class="s">rises over the mint</div></div>
+      <div class="stat"><div class="k">Network</div><div class="v">Ethereum</div><div class="s">mainnet · ERC-721</div></div>
     </div>
   </div>
 </header>
@@ -250,46 +235,69 @@
 <section id="about">
   <div class="wrap cols-2">
     <div>
-      <div class="kicker">01 · About</div>
-      <h2>A print shop that runs on work.</h2>
+      <div class="kicker">About</div>
+      <h2>What this is</h2>
     </div>
     <div>
-      <p class="lede" style="margin-bottom:24px">HashPrints is an experimental collection of 3,333 generative pixel prints on Ethereum. Nothing is pre-rendered and there's no reveal. Every print's art comes from a keccak256 hash that the minter had to grind for in their own browser.</p>
-      <p>To mint (we call it <i>pressing</i>), your browser searches for a nonce that makes <code>keccak256(contract, your wallet, nonce)</code> start with enough zero bits. You then submit that nonce with a small ETH payment. The contract checks the work, prices it with a cooling Dutch auction, and stores the hash forever as your print's seed.</p>
+      <p class="lede" style="margin-bottom:24px">HashPrints is a 3,333-piece generative NFT collection. There is no pre-generated art and no reveal. Each print is rendered from a keccak256 hash that the minter finds by brute force in their own browser.</p>
+      <p>Minting takes two inputs: a nonce for which <code>keccak256(contract, wallet, nonce)</code> starts with enough zero bits, and the mint price. The contract checks the hash, stores it as the token's seed, and mints. The renderer is open source, so anyone can redraw any token from its on-chain seed.</p>
       <dl class="about-facts">
         <div><dt>Name</dt><dd>HashPrints (HASHPRINT)</dd></div>
         <div><dt>Supply</dt><dd>3,333 · 3,330 public + 3 artist proofs</dd></div>
-        <div><dt>Floor price</dt><dd>0.000315 ETH (≈ $0.80)</dd></div>
+        <div><dt>Mint price</dt><dd>0.000315 ETH (≈ $0.80), gas paid separately</dd></div>
         <div><dt>Limit</dt><dd>2 per wallet</dd></div>
         <div><dt>Standard</dt><dd>ERC-721 · Ethereum mainnet</dd></div>
-        <div><dt>Format</dt><dd>32 × 32 px · Paper &amp; Night editions</dd></div>
-        <div><dt>Status</dt><dd>Tested &amp; internally reviewed · not deployed</dd></div>
+        <div><dt>Image</dt><dd>32 × 32 px · Paper and Night editions</dd></div>
       </dl>
     </div>
   </div>
 </section>
 
-<section id="concept">
+<section id="minting">
   <div class="wrap">
-    <div class="kicker">02 · Concept</div>
-    <h2>The hash is the plate.</h2>
-    <p class="lede">HashPrints borrows the language of printmaking. In a print shop you carve a plate, ink it, and press it under weight. Here the plate is a hash, the weight is computation, and the press is a smart contract.</p>
-    <div class="cards">
-      <div class="card"><div class="n">PLATE</div><h3>Your hash</h3><p>Every nonce you try produces a new 256-bit hash. The one you submit is carved into the chain as your print's seed. It decides every line, ink and glitch, deterministically.</p></div>
-      <div class="card"><div class="n">PRESSURE</div><h3>Work</h3><p>A valid plate needs at least 16 leading zero bits. That takes about 65,000 tries on average. Each extra zero bit you find is printed as a tick mark across the top of the print.</p></div>
-      <div class="card"><div class="n">RUNS</div><h3>333 at a time</h3><p>The edition is pressed in 10 runs of 333. Each run opens hot at 4× the floor and cools to the floor over 33 minutes. Every two runs the press gets one bit harder.</p></div>
-      <div class="card"><div class="n">GOLD LEAF</div><h3>Rarity is earned</h3><p>Nothing about rarity is a dice roll you can't influence. Find 4 extra zero bits and the print is struck in gold leaf. Find 8 and it's holo foil. Extra work also cuts your price.</p></div>
-      <div class="card"><div class="n">REGISTRATION</div><h3>Honest imperfection</h3><p>Like a risograph, the second ink drum can drift a pixel off register. Where the two inks overlap they overprint into a third colour, and sometimes a row slips in the press.</p></div>
-      <div class="card"><div class="n">COLOPHON</div><h3>Signed in its own hash</h3><p>Along the bottom margin every print carries a barcode of its own hash bits, the way a printer marks a sheet. You can read the proof straight off the art.</p></div>
+    <div class="kicker">Minting</div>
+    <h2>How minting works</h2>
+    <p class="lede">Every mint costs the same flat price. The work you put in decides whether you can mint and how rare the result is. It never changes the price.</p>
+
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Find a hash</h3><p>Your browser tries nonces until <code>keccak256(contract, wallet, nonce)</code> starts with the required number of zero bits. Your wallet address is part of the input, so a nonce you find only works for you.</p></div>
+      <div class="step"><div class="n">2</div><h3>Mint</h3><p>Send the nonce with exactly <b>0.000315 ETH</b>. You pay network gas on top, at whatever the rate is when you mint. The contract rejects any other amount.</p></div>
+      <div class="step"><div class="n">3</div><h3>Get the print</h3><p>The contract checks the hash, saves it as the token's seed and mints the ERC-721. Each wallet can mint up to 2.</p></div>
+    </div>
+
+    <div class="cols-2" style="margin-bottom:56px">
+      <div>
+        <h3 style="font-size:24px">Runs and difficulty</h3>
+        <p style="color:var(--ink-2)">The 3,330 public prints are minted in 10 runs of 333. The required difficulty starts at 16 zero bits and goes up by one every two runs, ending at 20. Each extra bit doubles the average number of hashes needed.</p>
+        <p style="color:var(--ink-2)">Times assume about 150,000 hashes per second, which is roughly what a laptop browser does.</p>
+      </div>
+      <div class="table-scroll" id="runTable"></div>
+    </div>
+
+    <div class="cols-2">
+      <div>
+        <h3 style="font-size:24px">Rarity</h3>
+        <p style="color:var(--ink-2)">If your hash has more zero bits than the run requires, the print is rarer. You can stop at the first valid hash or keep searching. The odds below are for stopping at the first valid hash.</p>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Finish</th><th>Extra bits</th><th class="num">Odds</th><th class="num">≈ in 3,330</th></tr></thead>
+          <tbody>
+            <tr><td>Common</td><td>0–3</td><td class="num">93.75%</td><td class="num">3,122</td></tr>
+            <tr><td class="r-golden">Gold Leaf</td><td>4–7</td><td class="num">5.86%</td><td class="num">195</td></tr>
+            <tr><td class="r-mythic">Holo Foil</td><td>8+</td><td class="num">0.39%</td><td class="num">13</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </section>
 
 <section id="art">
   <div class="wrap">
-    <div class="kicker">03 · The Art</div>
-    <h2>Anatomy of a print.</h2>
-    <p class="lede">Each HashPrint is a 32 × 32 pixel plate traced by pixel walkers seeded from the hash. Two inks, one key colour, a paper stock, and everything in the margins means something.</p>
+    <div class="kicker">Art</div>
+    <h2>The art</h2>
+    <p class="lede">Each print is a 32 × 32 pixel image drawn by a seeded random walk over the grid. The seed is the token's hash, so the same hash always gives the same image. The look borrows from risograph printing: two inks, slight misregistration, and a colour where the inks overlap.</p>
 
     <div class="anatomy">
       <div class="anatomy-art frame">
@@ -301,161 +309,108 @@
         <span class="pin" style="left:96%;top:60%">5</span>
       </div>
       <ol>
-        <li><b>Work ticks.</b> One mark per zero bit in the hash. Faint marks show the required difficulty, and bright marks show extra work beyond it.</li>
-        <li><b>The plate.</b> A 28 × 26 area where the press draws: lines walked, shattered, dripped, woven or bloomed from the hash.</li>
-        <li><b>Overprint &amp; registration.</b> Ink B is printed on a second pass and may drift off register. Where the inks cross, they mix into an overprint colour.</li>
-        <li><b>Colophon.</b> 28 bits of the hash, right after its zero run, printed as a barcode in the bottom margin.</li>
-        <li><b>Stock.</b> The paper (or night) stock with grain. The 2px margin frames the plate like a real print.</li>
+        <li><b>Work marks.</b> One mark per leading zero bit in the hash. Dim marks are the required bits, and bright marks are extra bits.</li>
+        <li><b>Drawing area.</b> 28 × 26 px where the lines are drawn.</li>
+        <li><b>Overlap and drift.</b> The second ink can be offset by a pixel. Where the two inks overlap, they mix into a third colour.</li>
+        <li><b>Hash strip.</b> 28 bits of the hash, printed as a barcode.</li>
+        <li><b>Background.</b> Paper or Night stock with a light grain, plus a 2px margin.</li>
       </ol>
     </div>
 
-    <h3 style="font-size:28px">Two editions</h3>
-    <p style="color:var(--ink-2);max-width:720px">The hash picks the stock: about 60% of prints come out <b>Paper</b> (white stock, risograph inks) and 40% <b>Night</b> (black stock, neon inks).</p>
+    <h3 style="font-size:24px">Editions</h3>
+    <p style="color:var(--ink-2);max-width:720px">The hash decides the edition. About 60% of prints are <b>Paper</b> (light background, risograph ink colours) and 40% are <b>Night</b> (dark background, neon inks).</p>
     <div class="editions">
-      <div class="edition paper"><canvas class="print" id="edPaper" width="32" height="32"></canvas><div><h3>Paper</h3><p>Cream stock, risograph soy inks, multiply overprint. Ten inks, from Fluorescent Pink to Federal Blue.</p><div class="swatches" id="risoSwatches"></div></div></div>
-      <div class="edition night"><canvas class="print" id="edNight" width="32" height="32"></canvas><div><h3>Night</h3><p>Black stock, neon inks, screen overprint. Eight inks, from Acid to Ultra.</p><div class="swatches" id="neonSwatches"></div></div></div>
+      <div class="edition paper"><canvas class="print" id="edPaper" width="32" height="32"></canvas><div><h3>Paper</h3><p>Light background. 10 ink colours, mixed by multiplying where they overlap.</p><div class="swatches" id="risoSwatches"></div></div></div>
+      <div class="edition night"><canvas class="print" id="edNight" width="32" height="32"></canvas><div><h3>Night</h3><p>Dark background. 8 neon ink colours, mixed by screening where they overlap.</p><div class="swatches" id="neonSwatches"></div></div></div>
     </div>
 
-    <h3 style="font-size:28px">Six presses</h3>
-    <p style="color:var(--ink-2);max-width:720px">The press decides how the lines move. Symmetry (none, mirror, quad or rotational) is chosen separately, so any press can come out ordered or wild.</p>
+    <h3 style="font-size:24px">Styles</h3>
+    <p style="color:var(--ink-2);max-width:720px">There are six drawing styles. Symmetry (none, mirror, quad or rotational) is picked separately.</p>
     <div class="presses" id="presses"></div>
 
-    <div class="cols-2" style="margin-bottom:72px">
-      <div>
-        <h3 style="font-size:28px">Rarity</h3>
-        <p style="color:var(--ink-2)">Rarity depends on how many zero bits you find <i>beyond</i> what the current run requires. If you stop at your first valid proof, the odds are below. If you keep grinding, you can earn gold.</p>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th>Finish</th><th>Extra bits</th><th class="num">Odds at first proof</th><th class="num">≈ in 3,330</th></tr></thead>
-          <tbody>
-            <tr><td>Common</td><td>0–3</td><td class="num">93.75%</td><td class="num">3,122</td></tr>
-            <tr><td class="r-golden">Gold Leaf</td><td>4–7</td><td class="num">5.86%</td><td class="num">195</td></tr>
-            <tr><td class="r-mythic">Holo Foil</td><td>8+</td><td class="num">0.39%</td><td class="num">13</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <h3 style="font-size:28px">Proofs from the press</h3>
-    <p style="color:var(--ink-2)">Sample prints ground for this page. Click one to inspect its traits.</p>
-    <div class="filters" role="group" aria-label="Filter samples">
+    <h3 style="font-size:24px">Examples</h3>
+    <p style="color:var(--ink-2)">Generated for this page. Click one to see its traits.</p>
+    <div class="filters" role="group" aria-label="Filter examples">
       <button class="chip" data-filter="all" aria-pressed="true">All</button>
       <button class="chip" data-filter="Paper" aria-pressed="false">Paper</button>
       <button class="chip" data-filter="Night" aria-pressed="false">Night</button>
-      <button class="chip" data-filter="rare" aria-pressed="false">Gold &amp; Holo</button>
+      <button class="chip" data-filter="rare" aria-pressed="false">Gold Leaf / Holo Foil</button>
     </div>
     <div class="gallery" id="gallery"></div>
   </div>
 </section>
 
-<section id="mint">
+<section id="try">
   <div class="wrap">
-    <div class="kicker">04 · The Mint</div>
-    <h2>Grind. Press. Pull.</h2>
-    <p class="lede">The mint combines two mechanisms. Proof-of-grind decides <i>whether</i> you can press and what the print looks like. A cooling Dutch auction decides what you pay. Extra work cuts through the auction.</p>
-
-    <div class="steps">
-      <div class="step"><div class="n">01</div><h3>Grind</h3><p>Your browser tries nonce after nonce until <code>keccak256(contract, wallet, nonce)</code> starts with enough zero bits (16 to 20, depending on the run). The proof is bound to your wallet, so nobody can steal it from the mempool.</p></div>
-      <div class="step"><div class="n">02</div><h3>Press</h3><p>Submit the nonce with ETH. Each run opens at 4× the floor and cools linearly to <b>0.000315 ETH</b> over 33 minutes. <b>Every extra zero bit halves the premium</b>, so you can wait for the price to cool or grind your way down to it.</p></div>
-      <div class="step"><div class="n">03</div><h3>Pull</h3><p>The contract verifies the work, refunds any overpayment, mints the ERC-721, and stores the hash as the print's permanent seed. Max two per wallet. When a run sells out, the next one opens hot.</p></div>
-    </div>
-
-    <div class="chart-box">
-      <div class="chart-head">
-        <h3 style="margin:0">Press price over a run</h3>
-        <div class="legend" id="legend"></div>
+    <div class="kicker">Try it</div>
+    <h2>Mint simulator</h2>
+    <p class="lede">This runs the same hash search the real mint uses, against a placeholder contract address. Nothing is sent on-chain and no ETH is spent. Simulated prints are saved in your browser only.</p>
+    <div class="sim">
+      <div class="sim-controls">
+        <label for="wallet">Wallet address</label>
+        <div class="row"><input type="text" id="wallet" spellcheck="false" autocomplete="off"><button class="btn ghost" id="randWallet" type="button">New</button></div>
+        <div class="walletcount" id="walletCount"></div>
+        <label for="run">Run</label>
+        <select id="run"></select>
+        <label for="aim">Search until</label>
+        <select id="aim">
+          <option value="0">First valid hash</option>
+          <option value="2">+2 extra bits (4× the work)</option>
+          <option value="4">+4 extra bits · Gold Leaf (16×)</option>
+          <option value="8">+8 extra bits · Holo Foil (256×)</option>
+        </select>
+        <dl class="readout">
+          <dt>Difficulty</dt><dd id="roDiff">16 bits</dd>
+          <dt>Expected work</dt><dd id="roWork">65,536 hashes</dd>
+          <dt>Mint price</dt><dd id="roPrice">–</dd>
+        </dl>
+        <div class="row" style="margin-top:24px">
+          <button class="btn" id="grindBtn" type="button" style="flex:1">Start search</button>
+          <button class="btn ghost" id="stopBtn" type="button" disabled>Stop</button>
+        </div>
       </div>
-      <div id="chart"></div>
-      <div class="tooltip" id="tooltip"></div>
-    </div>
-    <details class="table-view">
-      <summary>Show as table</summary>
-      <div class="table-scroll" id="priceTable"></div>
-    </details>
-
-    <h3 style="font-size:28px">Run schedule</h3>
-    <p style="color:var(--ink-2)">Difficulty rises one bit every two runs, so later runs take more grinding. Times assume roughly 150,000 hashes/second, which is a typical laptop browser.</p>
-    <div class="table-scroll" style="margin-bottom:72px" id="runTable"></div>
-
-    <div id="simulator">
-      <div class="kicker">The Press · Simulator</div>
-      <h2 style="margin-bottom:16px">Try it now.</h2>
-      <p class="lede">This runs the exact grind and pricing the contract uses, against a simulated contract address. Real hashing and real prints, but no ETH is spent. Your simulated prints are kept in this browser.</p>
-      <div class="sim">
-        <div class="sim-controls">
-          <label for="wallet">Wallet address</label>
-          <div class="row"><input type="text" id="wallet" spellcheck="false" autocomplete="off"><button class="btn ghost" id="randWallet" type="button">New</button></div>
-          <div class="walletcount" id="walletCount"></div>
-          <label for="run">Run</label>
-          <select id="run"></select>
-          <label for="minutes">Minutes since run opened: <span id="minutesOut">5</span></label>
-          <input type="range" id="minutes" min="0" max="40" value="5">
-          <label for="aim">Grind target</label>
-          <select id="aim">
-            <option value="0">First valid proof</option>
-            <option value="2">+2 bits (¼ premium, 4× work)</option>
-            <option value="4">+4 bits · Gold Leaf (16× work)</option>
-            <option value="8">+8 bits · Holo Foil (256× work)</option>
-          </select>
+      <div class="sim-out">
+        <figure class="frame"><canvas class="print" id="simPrint" width="32" height="32"></canvas></figure>
+        <div class="status" id="simStatus">Press Start search to look for a valid hash.</div>
+        <div id="simResult" hidden>
+          <div class="traits" id="simTraits"></div>
           <dl class="readout">
-            <dt>Difficulty</dt><dd id="roDiff">16 bits</dd>
-            <dt>Expected work</dt><dd id="roWork">65,536 hashes</dd>
-            <dt>Base price now</dt><dd id="roBase">–</dd>
+            <dt>Nonce</dt><dd id="resNonce"></dd>
+            <dt>Zero bits</dt><dd id="resBits"></dd>
+            <dt>You pay</dt><dd><span class="price-now" id="resPrice"></span></dd>
           </dl>
-          <div class="row" style="margin-top:24px">
-            <button class="btn" id="grindBtn" type="button" style="flex:1">GRIND</button>
-            <button class="btn ghost" id="stopBtn" type="button" disabled>Stop</button>
-          </div>
-        </div>
-        <div class="sim-out">
-          <figure class="frame"><canvas class="print" id="simPrint" width="32" height="32"></canvas></figure>
-          <div class="status" id="simStatus">Press GRIND to start searching for a plate.</div>
-          <div id="simResult" hidden>
-            <div class="traits" id="simTraits"></div>
-            <dl class="readout">
-              <dt>Nonce</dt><dd id="resNonce"></dd>
-              <dt>Zero bits</dt><dd id="resBits"></dd>
-              <dt>You pay</dt><dd><span class="price-now" id="resPrice"></span></dd>
-              <dt>Saved</dt><dd id="resSaved"></dd>
-            </dl>
-            <div class="row" style="margin-top:16px">
-              <button class="btn" id="pressBtn" type="button">PRESS (simulated)</button>
-              <button class="btn ghost" id="pngBtn" type="button">PNG</button>
-            </div>
+          <div class="row" style="margin-top:16px">
+            <button class="btn" id="pressBtn" type="button">Mint (simulated)</button>
+            <button class="btn ghost" id="pngBtn" type="button">PNG</button>
           </div>
         </div>
       </div>
-      <h3 style="margin-top:40px">Your simulated prints</h3>
-      <div class="gallery" id="myPrints"></div>
     </div>
+    <h3 style="margin-top:40px">Your simulated prints</h3>
+    <div class="gallery" id="myPrints"></div>
   </div>
 </section>
 
 <section id="contract">
   <div class="wrap">
-    <div class="kicker">05 · Contract</div>
-    <h2>On-chain, in the open.</h2>
-    <p class="lede">The contract is a standard OpenZeppelin ERC-721 with the press built in. Its tests check that the website's grind and price maths match the contract bit for bit.</p>
-    <div class="warn"><b>Not deployed. Internally reviewed, not professionally audited.</b> The contract has 12 tests (including re-entrancy and refund attacks), a Slither static-analysis pass and a manual review. That isn't the same as an audit by an independent firm, which a mainnet launch should still get. Everything on this page runs in simulation. If it goes live, the address will appear here.</div>
+    <div class="kicker">Contract</div>
+    <h2>Contract</h2>
+    <p class="lede">An OpenZeppelin ERC-721 with the minting logic built in. The browser uses the same hash function as the contract, so a hash found on this site is accepted on-chain.</p>
     <div class="cols-2">
       <div>
-        <h3>Press interface</h3>
+        <h3>Main functions</h3>
 <pre>press(uint256 nonce) payable
-  → requires keccak256(abi.encode(
-      address(this), msg.sender, nonce))
-    to have ≥ difficulty() leading zero bits
-  → price = priceFor(extraBits)
-  → refunds overpayment, mints, stores seed
+  requires keccak256(abi.encode(address(this),
+    msg.sender, nonce)) to have at least
+    difficulty() leading zero bits
+  requires msg.value == price()
 
+price()           0.000315 ETH
 difficulty()      16 + run / 2
-priceFor(extra)   floor + premium(t) &gt;&gt; extra
-currentPrice()    priceFor(0)
-seedOf(tokenId)   the print's hash
-pressedBy(wallet) prints pressed (max 2)
-tokenURI(id)      &lt;base&gt;id?seed=…&amp;d=…
-lockBaseURI()     freezes metadata, one-way</pre>
-        <p><a href="https://github.com/oopsitsfay/lessons/blob/claude/fervent-babbage-e0f7cf/hashprints/contracts/HashPrints.sol">Read HashPrints.sol on GitHub →</a></p>
+seedOf(tokenId)   the token's hash
+pressedBy(wallet) mints so far (max 2)
+tokenURI(id)      &lt;base&gt;id?seed=…&amp;d=…</pre>
+        <p><a href="https://github.com/oopsitsfay/lessons/blob/claude/fervent-babbage-e0f7cf/hashprints/contracts/HashPrints.sol">HashPrints.sol on GitHub</a></p>
       </div>
       <div class="table-scroll">
         <table>
@@ -465,14 +420,12 @@ lockBaseURI()     freezes metadata, one-way</pre>
             <tr><td>ARTIST_PROOFS (ids 1–3)</td><td class="num">3</td></tr>
             <tr><td>RUN_SIZE × RUNS</td><td class="num">333 × 10</td></tr>
             <tr><td>MAX_PER_WALLET</td><td class="num">2</td></tr>
-            <tr><td>floorPrice</td><td class="num">0.000315 ETH</td></tr>
-            <tr><td>START_MULTIPLIER</td><td class="num">4×</td></tr>
-            <tr><td>DECAY</td><td class="num">33 min</td></tr>
+            <tr><td>price</td><td class="num">0.000315 ETH</td></tr>
             <tr><td>BASE_DIFFICULTY</td><td class="num">16 bits</td></tr>
-            <tr><td>Gas per press</td><td class="num">≈ 133k</td></tr>
+            <tr><td>Gas per mint</td><td class="num">≈ 124k</td></tr>
           </tbody>
         </table>
-        <p style="font-size:14px;color:var(--ink-2);margin-top:16px">The floor price can only change <i>before</i> the press opens. After that, the pricing rules are fixed in code.</p>
+        <p style="font-size:14px;color:var(--ink-2);margin-top:16px">The price can only be changed before minting opens. Once metadata is confirmed working, the owner locks the base URI with <code>lockBaseURI()</code> and it can't be changed after that.</p>
       </div>
     </div>
   </div>
@@ -480,25 +433,24 @@ lockBaseURI()     freezes metadata, one-way</pre>
 
 <section id="faq">
   <div class="wrap faq">
-    <div class="kicker">06 · FAQ</div>
-    <h2 style="margin-bottom:24px">Questions.</h2>
-    <details><summary>Is the mint live?</summary><p>Not yet. The contract is tested and internally reviewed, but not deployed or professionally audited. The simulator above uses the same grind and price maths, so you can try the full experience without spending anything.</p></details>
-    <details><summary>Why 0.000315 ETH?</summary><p>The target price is $0.80. At ETH ≈ $2,540 (October 12, 2026) that works out to 0.000315 ETH. The price is fixed in ETH once the press opens, so its dollar value moves with the market.</p></details>
-    <details><summary>What about gas?</summary><p>A press uses about 133,000 gas, cut by a third by packing the contract's storage. At 0.3 gwei that's about $0.10, and at 1 gwei about $0.34. When the network is busy, gas can still cost more than the print itself.</p></details>
-    <details><summary>Why max two per wallet?</summary><p>So the edition spreads out. It isn't sybil-proof (nothing on-chain is), but each extra wallet needs its own grind, because proofs are bound to the address that ground them.</p></details>
-    <details><summary>Can bots or GPUs grind faster?</summary><p>Yes, and that's part of the experiment. Work works like a currency: someone with a fast machine can grind gold or skip the Dutch premium. For everyone else, waiting does the same job. A typical laptop finds a valid 16-bit proof in under a second and a Gold Leaf proof in a few seconds.</p></details>
-    <details><summary>Can I choose what my print looks like?</summary><p>Sort of. Every nonce gives a different hash and so a different print. You can keep grinding until a valid plate appears that you like, but you can't steer it. And if the run fills up while you're picky, the next run is harder.</p></details>
-    <details><summary>What is stored on-chain?</summary><p>Each token's 32-byte seed. Its difficulty follows from its token id. The art is rendered deterministically from the seed by the open-source renderer (hashprints.js), so anyone can redraw any print from chain data alone.</p></details>
-    <details><summary>How do marketplaces see the art?</summary><p>The contract's <code>tokenURI</code> points at this site's metadata API and carries the on-chain seed in the URL, for example <code>/api/meta/42?seed=0x…&amp;d=16</code>. The API renders the traits and an SVG image from that seed alone, so it never needs to read the chain or keep a database. Once the base URI is set, the owner can lock it permanently with <code>lockBaseURI()</code>.</p></details>
-    <details><summary>What are artist proofs?</summary><p>Tokens #1–3 are reserved for the artist. They're free but still need a valid 16-bit proof. Public prints start at #4.</p></details>
+    <div class="kicker">FAQ</div>
+    <h2 style="margin-bottom:24px">FAQ</h2>
+    <details><summary>How much does it cost?</summary><p>0.000315 ETH per mint, which was about $0.80 when the price was set (ETH ≈ $2,540, October 12, 2026). Gas is separate and depends on the network at the time you mint. A mint uses about 124,000 gas.</p></details>
+    <details><summary>Does finding more zero bits make it cheaper?</summary><p>No. Everyone pays the same price. Extra zero bits only affect rarity.</p></details>
+    <details><summary>Why 2 per wallet?</summary><p>To spread the collection across more holders. It's per address, so it can't stop someone using several wallets, but each wallet needs its own hash search.</p></details>
+    <details><summary>Can a GPU find hashes faster?</summary><p>Yes. Faster hardware finds valid hashes and rare ones quicker. A laptop browser finds a 16-bit hash in under a second, and a Gold Leaf one in a few seconds.</p></details>
+    <details><summary>Can I pick what my print looks like?</summary><p>Not directly. Each nonce gives a different hash and a different image. You can keep searching until a valid one you like turns up.</p></details>
+    <details><summary>What's stored on-chain?</summary><p>Each token's 32-byte seed. The difficulty is worked out from the token id. Images and traits are rendered from the seed by hashprints.js.</p></details>
+    <details><summary>How do marketplaces get the image?</summary><p><code>tokenURI</code> points to <code>/api/meta/&lt;id&gt;?seed=…&amp;d=…</code> on this site, with the seed taken from the contract. The API renders the traits and an SVG from the seed. It doesn't read the chain or use a database.</p></details>
+    <details><summary>What are artist proofs?</summary><p>Tokens #1–3, reserved for the artist. They're free, but they still need a valid 16-bit hash. Public mints start at #4.</p></details>
   </div>
 </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <span>HASH/PRINTS · 3,333 · experimental</span>
-    <span>Price snapshot: ETH ≈ $2,540 · Oct 12, 2026</span>
+    <span>HASH/PRINTS · 3,333</span>
+    <span><a href="https://github.com/oopsitsfay/lessons/tree/claude/fervent-babbage-e0f7cf/hashprints">Source</a> · ETH price as of Oct 12, 2026</span>
   </div>
 </footer>
 

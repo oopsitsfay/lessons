@@ -90,30 +90,32 @@
   // ------------------------------------------------------------- the press
   const CONFIG = {
     name: 'HashPrints',
+    symbol: 'HASHPRINT',
     maxSupply: 3333,
     artistProofs: 3,
     runSize: 333,
     runs: 10,
     baseDifficulty: 16,
-    startMultiplier: 4,
-    decaySeconds: 33 * 60,
-    floorWei: 315000000000000n, // 0.000315 ETH ≈ $0.80 at ETH ≈ $2,540 (Oct 12, 2026)
+    priceWei: 315000000000000n, // flat 0.000315 ETH ≈ $0.80 at ETH ≈ $2,540 (Oct 12, 2026); gas on top
     maxPerWallet: 2,
     ethUsdSnapshot: 2540,
     goldenBits: 4,
     mythicBits: 8,
   };
 
-  const difficultyForRun = (run) => CONFIG.baseDifficulty + Math.floor(run / 2);
+  // Deploy-time shapes for HashPrints.sol: constructor(name, symbol, price, baseURI, runSize, runs, artistProofs).
+  const COLLECTIONS = {
+    main: {
+      name: 'HashPrints', symbol: 'HASHPRINT', priceWei: CONFIG.priceWei,
+      baseURI: 'https://hashprints.vercel.app/api/meta/', runSize: 333, runs: 10, artistProofs: 3,
+    },
+    test: {
+      name: 'Test HashPrint', symbol: 'TESTPRINT', priceWei: CONFIG.priceWei,
+      baseURI: 'https://hashprints.vercel.app/api/test/meta/', runSize: 5, runs: 2, artistProofs: 0,
+    },
+  };
 
-  // Mirrors HashPrints.priceFor(): premium cools linearly, each extra bit halves it.
-  function priceFor(elapsedSeconds, extraBits) {
-    const floor = CONFIG.floorWei;
-    const remaining = BigInt(Math.max(0, CONFIG.decaySeconds - Math.floor(elapsedSeconds)));
-    let premium = (floor * BigInt(CONFIG.startMultiplier - 1) * remaining) / BigInt(CONFIG.decaySeconds);
-    premium = extraBits >= 256 ? 0n : premium >> BigInt(extraBits);
-    return floor + premium;
-  }
+  const difficultyForRun = (run) => CONFIG.baseDifficulty + Math.floor(run / 2);
 
   const formatEth = (wei) => {
     const s = (Number(wei) / 1e18).toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
@@ -223,7 +225,7 @@
     const pick = (arr) => arr[ri(arr.length)];
     const bits = leadingZeroBits(fromHex(hex));
     const extraBits = Math.max(0, bits - difficulty);
-    const rarity = extraBits >= CONFIG.mythicBits ? 'Mythic' : extraBits >= CONFIG.goldenBits ? 'Golden' : 'Common';
+    const rarity = extraBits >= CONFIG.mythicBits ? 'Holo Foil' : extraBits >= CONFIG.goldenBits ? 'Gold Leaf' : 'Common';
 
     const edition = rand() < 0.6 ? 'Paper' : 'Night';
     let inkNames, palette;
@@ -236,8 +238,8 @@
       const [A, Bk] = [RISO[a], RISO[b]];
       palette = ['#f4f0e6', A, Bk, '#1b1b1b', multiply(A, Bk), '#d9d2c1'];
       if (rarity !== 'Common') {
-        inkNames = [rarity === 'Mythic' ? 'Holo Foil' : 'Gold Leaf', b];
-        const gold = rarity === 'Mythic' ? '#9b7bff' : '#c9a227';
+        inkNames = [rarity, b];
+        const gold = rarity === 'Holo Foil' ? '#9b7bff' : '#c9a227';
         palette = ['#f4f0e6', gold, Bk, '#1b1b1b', multiply(gold, Bk), '#d9d2c1'];
       }
     } else {
@@ -249,8 +251,8 @@
       const [A, Bk] = [NEON[a], NEON[b]];
       palette = ['#0b0b10', A, Bk, '#ffffff', screen(A, Bk), '#1a1a24'];
       if (rarity !== 'Common') {
-        inkNames = [rarity === 'Mythic' ? 'Holo Foil' : 'Gold Leaf', b];
-        const gold = rarity === 'Mythic' ? '#b49cff' : '#ffd700';
+        inkNames = [rarity, b];
+        const gold = rarity === 'Holo Foil' ? '#b49cff' : '#ffd700';
         palette = ['#0b0700', gold, Bk, '#fff4b0', screen(gold, Bk), '#1d1608'];
       }
     }
@@ -376,7 +378,7 @@
 
     const traits = {
       Edition: edition,
-      Press: press,
+      Style: press,
       Inks: inkNames.join(' × '),
       Symmetry: symmetry,
       Registration: registration,
@@ -399,7 +401,7 @@
   }
 
   const api = {
-    CONFIG, keccak256, toHex, fromHex, leadingZeroBits, difficultyForRun, priceFor, formatEth, formatUsd,
+    CONFIG, COLLECTIONS, keccak256, toHex, fromHex, leadingZeroBits, difficultyForRun, formatEth, formatUsd,
     proofHash, grind, render, toSVG, SIZE, RISO, NEON, PRESSES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

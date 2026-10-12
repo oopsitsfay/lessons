@@ -4,7 +4,7 @@
   "scripts": {
     "test": "hardhat test",
     "serve": "http-server site -p 8080 -c-1",
-    "test:slow": "SLOW=1 hardhat test"
+    "export": "hardhat run scripts/export-artifact.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.2",
