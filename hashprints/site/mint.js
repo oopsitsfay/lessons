@@ -107,7 +107,16 @@
       render();
     } catch (e) {
       setBadge('', 'Unknown');
-      say(`Couldn't read the contract: ${errMsg(e)}`, true);
+      if (!account) {
+        // Public node unreachable: let the visitor read through their own wallet instead.
+        $('notLive').classList.add('hidden');
+        $('mintBox').classList.remove('hidden');
+        $('connectBtn').classList.remove('hidden');
+        $('mintControls').classList.add('hidden');
+        say("Couldn't reach the network. Connect your wallet to check the mint status.", true);
+      } else {
+        say(`Couldn't read the contract: ${errMsg(e)}`, true);
+      }
     }
   }
 
