@@ -37,27 +37,28 @@
     <div class="msg" id="msg"></div>
   </div>
 <script src="vendor/ethers-6.umd.min.js"></script>
+<script src="wallet.js"></script>
 <script>
   (function () {
     const btn = document.getElementById('signIn');
     const msg = document.getElementById('msg');
     const say = (t, err) => { msg.textContent = t; msg.className = err ? 'msg err' : 'msg'; };
     btn.onclick = async () => {
-      if (!window.ethereum) return say('No wallet found. Install MetaMask or another browser wallet.', true);
       btn.disabled = true;
       try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send('eth_requestAccounts', []);
-        const signer = await provider.getSigner();
-        const address = (await signer.getAddress()).toLowerCase();
+        say('Connecting…');
+        const w = await HPWallet.connect();
+        if (!w) { say(''); return; }
         const message = [
           'HashPrints admin sign-in',
           `Domain: ${location.host}`,
-          `Address: ${address}`,
+          `Address: ${w.address}`,
           `Issued: ${new Date().toISOString()}`,
         ].join('\n');
-        say('Sign the message in your wallet…');
+        say(`Connected ${w.address.slice(0, 6)}…${w.address.slice(-4)}. Sign the message in ${w.name}…`);
+        const signer = await new ethers.BrowserProvider(w.provider).getSigner(w.address);
         const signature = await signer.signMessage(message);
+        say('Checking…');
         const r = await fetch('/api/admin/login', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -69,7 +70,7 @@
         say('Signed in. Opening the dashboard…');
         location.href = '/admin.html';
       } catch (e) {
-        say(e.code === 'ACTION_REJECTED' ? 'You rejected the signature request.' : (e.shortMessage || e.message), true);
+        say(HPWallet.friendly(e), true);
       } finally {
         btn.disabled = false;
       }

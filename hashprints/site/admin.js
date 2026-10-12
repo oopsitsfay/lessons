@@ -25,6 +25,7 @@
     const t = new Date().toLocaleTimeString();
     $('log').textContent = `[${t}] ${msg}\n` + $('log').textContent;
   }
+  const notify = (msg, kind = 'info') => { log(msg); HPWallet.toast(msg.replace(/https?:\/\/\S+\/tx\//, ''), kind); };
 
   function errMsg(e) {
     if (e?.code === 'ACTION_REJECTED' || e?.info?.error?.code === 4001) return 'rejected in wallet';
@@ -40,56 +41,44 @@
   }
 
   async function send(label, makeTx) {
-    if (!contract || !signer) return log(`${label}: connect a wallet and load a contract first`);
+    if (!contract || !signer) return notify('Connect your wallet and load a contract first.', 'error');
     try {
-      log(`${label}: confirm in your wallet…`);
+      notify(`${label}: confirm in your wallet…`);
       const tx = await makeTx();
       log(`${label}: sent ${txLink(tx.hash)}`);
+      HPWallet.toast(`${label}: waiting for confirmation…`);
       const receipt = await tx.wait();
-      log(`${label}: confirmed in block ${receipt.blockNumber}`);
+      notify(`${label}: done ✓`);
       await refreshStatus();
       return receipt;
     } catch (e) {
-      log(`${label} failed: ${errMsg(e)}`);
+      notify(`${label} failed: ${errMsg(e)}`, 'error');
       return null;
     }
   }
 
   // ------------------------------------------------------------ wallet
-  async function connect() {
-    if (!window.ethereum) {
-      log('No browser wallet found. Install MetaMask (or similar) and reload.');
-      return;
-    }
-    provider = new ethers.BrowserProvider(window.ethereum);
-    await provider.send('eth_requestAccounts', []);
-    signer = await provider.getSigner();
-    account = (await signer.getAddress()).toLowerCase();
-    chainId = Number((await provider.getNetwork()).chainId);
+  async function useWallet(w) {
+    provider = new ethers.BrowserProvider(w.provider);
+    signer = await provider.getSigner(w.address);
+    account = w.address;
+    chainId = w.chainId;
     const c = chain();
     $('netPill').textContent = `${c.name} · ${short(account)}`;
     $('netPill').className = `pill ${c.main ? 'main' : 'test'}`;
-    $('connectBtn').textContent = 'Connected';
-    $('mainnetNotice').classList.toggle('hidden', !c.main);
-    if (!CHAINS[chainId]) log(`Connected to unsupported chain ${chainId}. Switch to mainnet or Sepolia.`);
-    else log(`Connected ${account} on ${c.name}`);
+    $('connectBtn').classList.add('hidden');
+    $('switchMain').classList.toggle('hidden', chainId === 1 || chainId === 31337);
+    $('switchMain').onclick = () => HPWallet.switchChain(w.provider, '0x1', 'Ethereum mainnet');
+    log(`Connected ${account} on ${c.name}`);
+    if (!CHAINS[chainId]) notify('Your wallet is on another network. Switch to Ethereum mainnet.', 'error');
     renderSaved();
     const fromUrl = new URLSearchParams(location.search).get('c');
     if (fromUrl && ethers.isAddress(fromUrl)) await loadContract(fromUrl);
   }
 
-  async function switchTo(id) {
-    if (!window.ethereum) return log('No browser wallet found.');
-    try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAINS[id].hex }] });
-    } catch (e) {
-      log(`Network switch failed: ${errMsg(e)}`);
-    }
-  }
-
-  if (window.ethereum) {
-    window.ethereum.on?.('chainChanged', () => location.reload());
-    window.ethereum.on?.('accountsChanged', () => location.reload());
+  async function connect() {
+    const w = await HPWallet.connect();
+    if (w) await useWallet(w);
   }
 
   // ------------------------------------------------------------ deploy
@@ -117,7 +106,7 @@
   }
 
   async function estimate() {
-    if (!signer) { log('Connect a wallet first.'); return null; }
+    if (!signer) { notify('Connect a wallet first.', 'error'); return null; }
     try {
       const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
       const tx = await factory.getDeployTransaction(...ctorArgs());
@@ -135,10 +124,10 @@
   }
 
   async function deploy() {
-    if (!signer) return log('Connect a wallet first.');
-    if (!CHAINS[chainId]) return log('Switch to mainnet or Sepolia first.');
+    if (!signer) return notify('Connect a wallet first.', 'error');
+    if (!CHAINS[chainId]) return notify('Switch your wallet to Ethereum mainnet first.', 'error');
     let args;
-    try { args = ctorArgs(); } catch (e) { return log(`Check the deploy fields: ${errMsg(e)}`); }
+    try { args = ctorArgs(); } catch (e) { return notify(`Check the deploy fields: ${errMsg(e)}`, 'error'); }
     const est = await estimate();
     const total = Number(args[4] * args[5] + args[6]);
     const ok = confirm(`Deploy "${args[0]}" (${args[1]}) with ${total} tokens at ${ethers.formatEther(args[2])} ETH each on ${chain().name}?\n\n${est ? est.text : 'Gas estimate unavailable.'}\n\nYour wallet will ask you to confirm.`);
@@ -152,7 +141,7 @@
       $('deployStatus').textContent = 'Waiting for confirmation…';
       const receipt = await tx.wait();
       const address = (await c.getAddress()).toLowerCase();
-      log(`Deploy: ${args[0]} at ${address} (block ${receipt.blockNumber}, ${receipt.gasUsed.toLocaleString()} gas)`);
+      notify(`Deployed ${args[0]} at ${short(address)} ✓`); log(`Deploy: ${args[0]} at ${address} (block ${receipt.blockNumber}, ${receipt.gasUsed.toLocaleString()} gas)`);
       const saved = store.get('hpadmin.contracts', []);
       saved.unshift({ chainId, address, name: args[0], symbol: args[1], block: receipt.blockNumber, ctorArgs: factory.interface.encodeDeploy(args).slice(2) });
       store.set('hpadmin.contracts', saved);
@@ -160,7 +149,7 @@
       await loadContract(address);
     } catch (e) {
       $('deployStatus').textContent = '';
-      log(`Deploy failed: ${errMsg(e)}`);
+      notify(`Deploy failed: ${errMsg(e)}`, 'error');
     }
   }
 
@@ -174,10 +163,10 @@
 
   // ------------------------------------------------------------ status
   async function loadContract(address) {
-    if (!signer) return log('Connect a wallet first.');
-    if (!ethers.isAddress(address)) return log('That is not a valid address.');
+    if (!signer) return notify('Connect a wallet first.', 'error');
+    if (!ethers.isAddress(address)) return notify('That is not a valid address.', 'error');
     const code = await provider.getCode(address);
-    if (code === '0x') return log(`No contract at ${address} on ${chain().name}.`);
+    if (code === '0x') return notify(`No contract at ${address} on ${chain().name}.`, 'error');
     contract = new ethers.Contract(address, artifact.abi, signer);
     const url = new URL(location.href);
     url.searchParams.set('c', address);
@@ -348,9 +337,7 @@
 
   // ------------------------------------------------------------ wiring
   $('signOutBtn').onclick = () => fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => { location.href = '/admin-login.html'; });
-  $('connectBtn').onclick = () => connect().catch((e) => log(`Connect failed: ${errMsg(e)}`));
-  $('switchMain').onclick = () => switchTo(1);
-  $('switchSepolia').onclick = () => switchTo(11155111);
+  $('connectBtn').onclick = () => connect().catch((e) => notify(HPWallet.friendly(e), 'error'));
   $('preset').onchange = fillPreset;
   $('estimateBtn').onclick = estimate;
   $('deployBtn').onclick = deploy;
@@ -359,7 +346,7 @@
   $('openBtn').onclick = () => confirm(`Go live on ${chain().name}? Anyone can mint from this moment. This can't be undone and the price is fixed from now on.`) && send('Go live', () => contract.openPress());
   $('priceBtn').onclick = () => {
     let wei;
-    try { wei = ethers.parseEther($('newPrice').value.trim()); } catch { return log('Enter a price in ETH, e.g. 0.000315'); }
+    try { wei = ethers.parseEther($('newPrice').value.trim()); } catch { return notify('Enter a price in ETH, e.g. 0.000315', 'error'); }
     send('Set price', () => contract.setPrice(wei));
   };
   $('baseBtn').onclick = () => send('Set base URI', () => contract.setBaseURI($('newBase').value.trim()));
@@ -367,12 +354,12 @@
   $('apBtn').onclick = artistProof;
   $('withdrawBtn').onclick = () => {
     const to = $('withdrawTo').value.trim() || account;
-    if (!ethers.isAddress(to)) return log('Withdraw: invalid address');
+    if (!ethers.isAddress(to)) return notify('Withdraw: invalid address', 'error');
     if (confirm(`Withdraw ${ethers.formatEther(info.balance || 0n)} ETH to ${to}?`)) send('Withdraw', () => contract.withdraw(to));
   };
   $('transferBtn').onclick = () => {
     const to = $('newOwner').value.trim();
-    if (!ethers.isAddress(to)) return log('Ownership: invalid address');
+    if (!ethers.isAddress(to)) return notify('Ownership: invalid address', 'error');
     if (confirm(`Propose ${to} as the new owner? They must accept from that wallet.`)) send('Propose owner', () => contract.transferOwnership(to));
   };
   $('acceptBtn').onclick = () => send('Accept ownership', () => contract.acceptOwnership());
@@ -384,5 +371,7 @@
   fetch('contract/HashPrints.json').then((r) => r.json()).then((a) => {
     artifact = a;
     $('vCompiler').textContent = `v${a.compiler.replace('.Emscripten.clang', '')} · optimizer on, 200 runs · EVM cancun`;
+    // You signed in with a wallet to get here, so reconnect it without another popup.
+    return HPWallet.reconnect().then((w) => w && useWallet(w));
   }).catch((e) => log(`Could not load contract artifact: ${errMsg(e)}`));
 })();

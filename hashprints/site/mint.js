@@ -37,7 +37,7 @@
   }
 
   function errMsg(e) {
-    if (e?.code === 'ACTION_REJECTED' || e?.info?.error?.code === 4001) return 'You rejected the transaction in your wallet.';
+    if (e?.code === 'ACTION_REJECTED' || e?.code === 4001 || e?.info?.error?.code === 4001) return 'You cancelled the transaction in your wallet.';
     let name = e?.revert?.name;
     const data = e?.data || e?.info?.error?.data?.data || e?.error?.data;
     if (!name && data && artifact) {
@@ -121,21 +121,24 @@
   }
 
   // ------------------------------------------------------------ wallet
+  async function useWallet(w) {
+    if (w.chainId !== chainId) {
+      say(`Switch your wallet to ${chain.name}…`);
+      await HPWallet.switchChain(w.provider, chain.hex, chain.name); // reloads the page on success
+      return;
+    }
+    browser = new ethers.BrowserProvider(w.provider);
+    signer = await browser.getSigner(w.address);
+    account = w.address;
+    walletChain = w.chainId;
+    say(`Connected ${short(account)}`);
+    await refresh();
+  }
+
   async function connect() {
-    if (!window.ethereum) return say('No wallet found. Install MetaMask or another browser wallet, then reload.', true);
     try {
-      browser = new ethers.BrowserProvider(window.ethereum);
-      await browser.send('eth_requestAccounts', []);
-      walletChain = Number((await browser.getNetwork()).chainId);
-      if (walletChain !== chainId) {
-        say(`Switch your wallet to ${chain.name}…`);
-        await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: chain.hex }] });
-        return; // the chainChanged event reloads the page
-      }
-      signer = await browser.getSigner();
-      account = (await signer.getAddress()).toLowerCase();
-      say(`Connected ${short(account)}`);
-      await refresh();
+      const w = await HPWallet.connect();
+      if (w) await useWallet(w);
     } catch (e) {
       say(errMsg(e), true);
     }
@@ -211,10 +214,6 @@
     $('connectBtn').onclick = connect;
     $('mintBtn').onclick = mint;
     $('stopBtn').onclick = () => worker && worker.postMessage({ type: 'stop' });
-    if (window.ethereum) {
-      window.ethereum.on?.('chainChanged', () => location.reload());
-      window.ethereum.on?.('accountsChanged', () => location.reload());
-    }
 
     const [config, art] = await Promise.all([
       fetch('mint-config.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({})),
@@ -230,6 +229,8 @@
       reader = new ethers.JsonRpcProvider(chain.rpc, chainId, { staticNetwork: true });
       readContract = new ethers.Contract(address, artifact.abi, reader);
     }
+    const back = await HPWallet.reconnect().catch(() => null); // returning visitor: no popup
+    if (back && back.chainId === chainId) await useWallet(back);
     await refresh();
     setInterval(refresh, POLL_MS);
   }
