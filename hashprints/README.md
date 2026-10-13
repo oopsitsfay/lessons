@@ -24,7 +24,8 @@ The supply shape is a constructor argument, so the same contract also deploys **
 - `contracts/HashPrints.sol`: ERC-721 (OpenZeppelin 5) with the press built in.
 - `site/hashprints.js`: shared core with keccak256, the hash search, collection configs and the print renderer. It mirrors the contract exactly.
 - `site/index.html`, `site/app.js`, `site/grind-worker.js`: the website and simulator.
-- `site/print.html`: single-print viewer, used as each token's `external_url`.
+- `site/print.html`: single-print viewer, used as each token's `external_url`. Shows the owner, minter and history when the token is on chain.
+- `site/collection.html`, `site/collection.js`, `site/api/collection.js`: the collection hub. Every minted print with trait filters and sorting, an activity feed, a holders list and a page per wallet (`collection.html?owner=0x…`). The API reads `Pressed` and `Transfer` logs from a public node, starting at `fromBlock` in `mint-config.json` (the deploy block), so there's no database to keep in sync.
 - `site/mint.html`, `site/mint.js`: public mint page. Shows "Not live" and blocks minting until the owner presses Go live, then switches over by itself (checks every 15 s).
 - `site/mint-config.json`: which contract the public mint page uses (`main` and `test`, with chain id and address), plus the WalletConnect project id.
 - `site/wallet.js`: shared wallet connector (EIP-6963 wallet picker, WalletConnect, wallet-app links on phones, silent reconnect).
@@ -57,7 +58,7 @@ Once signed in, connect the wallet that should own the contract.
 
 1. Pick a preset (Test HashPrint or HashPrints), check the fields, then click **Deploy**. The page sends an ordinary transaction to the public CREATE2 deployer (`0x4e59b44847b379578588920cA78FbF26c0B4956C`), which creates the contract with your wallet as owner. This works in wallets that can't send contract-creation transactions, such as Zerion. Your wallet sets the gas.
 2. Verify the source on Etherscan using the values in the *Verify* panel.
-3. Put the contract address in `site/mint-config.json` (or share the public mint link the admin page shows).
+3. Put the contract address and its deploy block (`fromBlock`) in `site/mint-config.json` (or share the public mint link the admin page shows). Without `fromBlock` the collection API looks the deploy block up on Blockscout.
 4. **Go live**. Until then, the contract rejects every mint and the mint page shows "Not live". Going live can't be undone, and it locks the price.
 5. **Find hash and mint** runs a real mint from your wallet. Check the token on a marketplace, then **Lock base URI**.
 6. **Withdraw** sends the mint revenue (the contract balance) to any address. It defaults to the owner wallet.

@@ -41,8 +41,10 @@
   .strip { display: grid; grid-template-columns: repeat(12, 1fr); height: 120px; overflow: hidden; border-bottom: 1px solid var(--rule); background: var(--paper-2); }
   .strip canvas { width: 100%; height: 120px; object-fit: cover; image-rendering: pixelated; display: block; }
   @media (max-width: 760px) { .strip { grid-template-columns: repeat(6, 1fr); height: 80px; } .strip canvas { height: 80px; } .strip canvas:nth-child(n+7) { display: none; } }
-  .head { display: flex; gap: 20px; align-items: flex-end; margin-top: -44px; flex-wrap: wrap; }
-  .avatar { width: 112px; height: 112px; border: 4px solid var(--paper); background: var(--paper-2); flex: none; }
+  .head { display: flex; gap: 20px; align-items: flex-end; margin-top: 16px; flex-wrap: wrap; }
+  .avatar { width: 112px; height: 112px; border: 4px solid var(--paper); background: var(--paper-2); flex: none; margin-top: -60px; }
+  .head.flat .avatar { margin-top: 0; }
+  @media (max-width: 560px) { .avatar { width: 84px; height: 84px; margin-top: -48px; } .head { gap: 14px; } }
   .avatar canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
   .avatar.addr { display: grid; place-items: center; font: 700 28px "JetBrains Mono", monospace; color: #000; }
   .head .who { flex: 1; min-width: 220px; padding-bottom: 6px; }
@@ -64,6 +66,7 @@
   .stats b { display: block; font: 700 18px "JetBrains Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .stats span { color: var(--muted); font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; }
   @media (max-width: 760px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .stats div:nth-child(3n) { border-right: 0; } .stats div:nth-child(-n+3) { border-bottom: 1px solid var(--rule); } }
+  @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stats div { border-right: 1px solid var(--rule) !important; border-bottom: 1px solid var(--rule); } .stats div:nth-child(2n) { border-right: 0 !important; } .stats div:nth-last-child(-n+2) { border-bottom: 0; } .stats b { font-size: 16px; } .toolbar select { flex: 1 1 auto; } }
   .progress { height: 4px; background: var(--paper-2); margin-top: -1px; border: 1px solid var(--rule); border-top: 0; }
   .progress span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s; }
 

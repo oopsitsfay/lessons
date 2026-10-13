@@ -79,7 +79,7 @@
       avatar.style.background = `#${owner.slice(2, 8)}`;
       avatar.textContent = owner.slice(2, 4).toUpperCase();
     }
-    document.querySelector('.head').style.marginTop = pool.length ? '' : '32px';
+    document.querySelector('.head').classList.toggle('flat', !pool.length);
 
     const explorer = data.explorer;
     if (owner) {
