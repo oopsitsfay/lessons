@@ -12,7 +12,7 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   };
 
-  let artifact, provider, signer, account, chainId, contract, info = {};
+  let artifact, provider, signer, account, chainId, contract, wallet1193, info = {};
 
   // ------------------------------------------------------------ helpers
   const chain = () => CHAINS[chainId] || { name: `chain ${chainId}`, explorer: null, main: false };
@@ -28,7 +28,11 @@
   const notify = (msg, kind = 'info') => { log(msg); HPWallet.toast(msg.replace(/https?:\/\/\S+\/tx\//, ''), kind); };
 
   function errMsg(e) {
-    if (e?.code === 'ACTION_REJECTED' || e?.info?.error?.code === 4001) return 'rejected in wallet';
+    if (e?.code === 'ACTION_REJECTED' || e?.code === 4001 || e?.info?.error?.code === 4001) return 'rejected in wallet';
+    // Wallets that answer in a non-standard shape make ethers say "could not coalesce error";
+    // the wallet's own message is inside.
+    const inner = e?.error?.message || e?.info?.error?.message || e?.data?.message;
+    if (/coalesce/.test(e?.shortMessage || e?.message || '') && inner) return inner;
     if (e?.revert?.name) return `${e.revert.name}(${(e.revert.args || []).map(String).join(', ')})`;
     const data = e?.data || e?.info?.error?.data?.data || e?.error?.data;
     if (data && artifact) {
@@ -40,14 +44,39 @@
     return e?.shortMessage || e?.reason || e?.message || String(e);
   }
 
+  // Sends a transaction straight through the wallet's eth_sendTransaction with plain hex fields and
+  // an explicit gas limit. Mobile wallets handle this more reliably than ethers' signer wrapper.
+  async function sendTx({ to, data, value = 0n }) {
+    const v = BigInt(value || 0);
+    let gas;
+    try {
+      gas = await provider.estimateGas({ from: account, ...(to ? { to } : {}), data, value: v });
+    } catch (e) {
+      throw new Error(`The network rejected this transaction: ${errMsg(e)}`);
+    }
+    gas = (gas * 12n) / 10n; // 20% headroom
+    const fee = await provider.getFeeData();
+    const perGas = fee.maxFeePerGas ?? fee.gasPrice ?? 0n;
+    const need = gas * perGas + v;
+    const have = await provider.getBalance(account);
+    if (have < need) {
+      throw new Error(`Not enough ETH in ${short(account)}. This needs up to ${ethers.formatEther(need).slice(0, 9)} ETH (gas${v ? ' + payment' : ''}); the wallet has ${ethers.formatEther(have).slice(0, 9)} ETH.`);
+    }
+    const tx = { from: account, data, gas: ethers.toQuantity(gas), value: ethers.toQuantity(v) };
+    if (to) tx.to = to;
+    const hash = await wallet1193.request({ method: 'eth_sendTransaction', params: [tx] });
+    log(`sent ${txLink(hash)}`);
+    HPWallet.toast('Sent. Waiting for confirmation…');
+    const receipt = await provider.waitForTransaction(hash);
+    if (!receipt || receipt.status !== 1) throw new Error(`Transaction failed on-chain: ${txLink(hash)}`);
+    return receipt;
+  }
+
   async function send(label, makeTx) {
     if (!contract || !signer) return notify('Connect your wallet and load a contract first.', 'error');
     try {
       notify(`${label}: confirm in your wallet…`);
-      const tx = await makeTx();
-      log(`${label}: sent ${txLink(tx.hash)}`);
-      HPWallet.toast(`${label}: waiting for confirmation…`);
-      const receipt = await tx.wait();
+      const receipt = await sendTx(await makeTx());
       notify(`${label}: done ✓`);
       await refreshStatus();
       return receipt;
@@ -59,6 +88,7 @@
 
   // ------------------------------------------------------------ wallet
   async function useWallet(w) {
+    wallet1193 = w.provider;
     provider = new ethers.BrowserProvider(w.provider);
     signer = await provider.getSigner(w.address);
     account = w.address;
@@ -134,13 +164,11 @@
     if (!ok) return;
     try {
       const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
-      log('Deploy: confirm in your wallet…');
-      const c = await factory.deploy(...args);
-      const tx = c.deploymentTransaction();
-      log(`Deploy: sent ${txLink(tx.hash)}`);
-      $('deployStatus').textContent = 'Waiting for confirmation…';
-      const receipt = await tx.wait();
-      const address = (await c.getAddress()).toLowerCase();
+      notify('Deploy: confirm in your wallet…');
+      $('deployStatus').textContent = 'Confirm in your wallet…';
+      const { data } = await factory.getDeployTransaction(...args);
+      const receipt = await sendTx({ data });
+      const address = receipt.contractAddress.toLowerCase();
       notify(`Deployed ${args[0]} at ${short(address)} ✓`); log(`Deploy: ${args[0]} at ${address} (block ${receipt.blockNumber}, ${receipt.gasUsed.toLocaleString()} gas)`);
       const saved = store.get('hpadmin.contracts', []);
       saved.unshift({ chainId, address, name: args[0], symbol: args[1], block: receipt.blockNumber, ctorArgs: factory.interface.encodeDeploy(args).slice(2) });
@@ -265,7 +293,7 @@
     const found = await search(account, d, aim, $('mintStatus'));
     if (!found) { $('mintStatus').textContent = 'Search stopped.'; await refreshStatus(); return; }
     $('mintStatus').textContent = `Found ${found.bits}-bit hash in ${found.seconds.toFixed(1)} s. Confirm the mint in your wallet (${ethers.formatEther(info.price)} ETH + gas).`;
-    const receipt = await send('Mint', () => contract.press(found.nonce, { value: info.price }));
+    const receipt = await send('Mint', () => contract.press.populateTransaction(found.nonce, { value: info.price }));
     if (!receipt) { $('mintStatus').textContent = 'Mint not completed. See the log.'; return; }
     const ev = receipt.logs.map((l) => { try { return contract.interface.parseLog(l); } catch { return null; } }).find((x) => x && x.name === 'Pressed');
     const id = ev.args.tokenId;
@@ -291,7 +319,7 @@
     const found = await search(account, HP.CONFIG.baseDifficulty, 0, $('mintStatus'));
     if (!found) return;
     $('mintStatus').textContent = `Found A/P hash in ${found.seconds.toFixed(1)} s.`;
-    await send('Artist proof', () => contract.pressArtistProof(found.nonce));
+    await send('Artist proof', () => contract.pressArtistProof.populateTransaction(found.nonce));
     await loadTokens();
   }
 
@@ -343,26 +371,26 @@
   $('deployBtn').onclick = deploy;
   $('loadBtn').onclick = () => loadContract($('loadAddr').value.trim());
   $('refreshBtn').onclick = (e) => { e.preventDefault(); refreshStatus(); loadTokens(); };
-  $('openBtn').onclick = () => confirm(`Go live on ${chain().name}? Anyone can mint from this moment. This can't be undone and the price is fixed from now on.`) && send('Go live', () => contract.openPress());
+  $('openBtn').onclick = () => confirm(`Go live on ${chain().name}? Anyone can mint from this moment. This can't be undone and the price is fixed from now on.`) && send('Go live', () => contract.openPress.populateTransaction());
   $('priceBtn').onclick = () => {
     let wei;
     try { wei = ethers.parseEther($('newPrice').value.trim()); } catch { return notify('Enter a price in ETH, e.g. 0.000315', 'error'); }
-    send('Set price', () => contract.setPrice(wei));
+    send('Set price', () => contract.setPrice.populateTransaction(wei));
   };
-  $('baseBtn').onclick = () => send('Set base URI', () => contract.setBaseURI($('newBase').value.trim()));
-  $('lockBtn').onclick = () => confirm('Lock the base URI permanently? This cannot be undone.') && send('Lock base URI', () => contract.lockBaseURI());
+  $('baseBtn').onclick = () => send('Set base URI', () => contract.setBaseURI.populateTransaction($('newBase').value.trim()));
+  $('lockBtn').onclick = () => confirm('Lock the base URI permanently? This cannot be undone.') && send('Lock base URI', () => contract.lockBaseURI.populateTransaction());
   $('apBtn').onclick = artistProof;
   $('withdrawBtn').onclick = () => {
     const to = $('withdrawTo').value.trim() || account;
     if (!ethers.isAddress(to)) return notify('Withdraw: invalid address', 'error');
-    if (confirm(`Withdraw ${ethers.formatEther(info.balance || 0n)} ETH to ${to}?`)) send('Withdraw', () => contract.withdraw(to));
+    if (confirm(`Withdraw ${ethers.formatEther(info.balance || 0n)} ETH to ${to}?`)) send('Withdraw', () => contract.withdraw.populateTransaction(to));
   };
   $('transferBtn').onclick = () => {
     const to = $('newOwner').value.trim();
     if (!ethers.isAddress(to)) return notify('Ownership: invalid address', 'error');
-    if (confirm(`Propose ${to} as the new owner? They must accept from that wallet.`)) send('Propose owner', () => contract.transferOwnership(to));
+    if (confirm(`Propose ${to} as the new owner? They must accept from that wallet.`)) send('Propose owner', () => contract.transferOwnership.populateTransaction(to));
   };
-  $('acceptBtn').onclick = () => send('Accept ownership', () => contract.acceptOwnership());
+  $('acceptBtn').onclick = () => send('Accept ownership', () => contract.acceptOwnership.populateTransaction());
   $('copyArgs').onclick = () => navigator.clipboard.writeText($('vArgs').value).then(() => log('Constructor args copied'), () => $('vArgs').select());
   $('mintBtn').onclick = () => testMint().catch((e) => log(`Test mint failed: ${errMsg(e)}`));
 

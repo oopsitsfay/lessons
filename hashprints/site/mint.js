@@ -14,7 +14,7 @@
   const shape = HP.COLLECTIONS[key];
 
   let artifact, address, chainId, chain, reader, readContract;
-  let browser, signer, account, walletChain;
+  let browser, signer, account, walletChain, wallet1193;
   let status = null;
   let minting = false;
   let worker = null;
@@ -38,6 +38,8 @@
 
   function errMsg(e) {
     if (e?.code === 'ACTION_REJECTED' || e?.code === 4001 || e?.info?.error?.code === 4001) return 'You cancelled the transaction in your wallet.';
+    const inner = e?.error?.message || e?.info?.error?.message || e?.data?.message;
+    if (/coalesce/.test(e?.shortMessage || e?.message || '') && inner) return inner;
     let name = e?.revert?.name;
     const data = e?.data || e?.info?.error?.data?.data || e?.error?.data;
     if (!name && data && artifact) {
@@ -127,6 +129,7 @@
       await HPWallet.switchChain(w.provider, chain.hex, chain.name); // reloads the page on success
       return;
     }
+    wallet1193 = w.provider;
     browser = new ethers.BrowserProvider(w.provider);
     signer = await browser.getSigner(w.address);
     account = w.address;
@@ -180,9 +183,20 @@
       if (!found) { say('Search stopped.'); return; }
       say(`Found a ${found.bits}-bit hash. Confirm the mint in your wallet: ${ethers.formatEther(status.price)} ETH + gas.`);
       const c = new ethers.Contract(address, artifact.abi, signer);
-      const tx = await c.press(found.nonce, { value: status.price });
+      // Sent straight through the wallet with plain hex fields and a gas limit: mobile wallets
+      // handle this more reliably than ethers' signer wrapper.
+      const req = await c.press.populateTransaction(found.nonce, { value: status.price });
+      const gas = ((await browser.estimateGas({ from: account, to: address, data: req.data, value: status.price })) * 12n) / 10n;
+      const fee = await browser.getFeeData();
+      const need = gas * (fee.maxFeePerGas ?? fee.gasPrice ?? 0n) + status.price;
+      const have = await browser.getBalance(account);
+      if (have < need) throw new Error(`Not enough ETH. Minting needs up to ${ethers.formatEther(need).slice(0, 9)} ETH (price + gas); this wallet has ${ethers.formatEther(have).slice(0, 9)} ETH.`);
+      const hash = await wallet1193.request({ method: 'eth_sendTransaction', params: [{
+        from: account, to: address, data: req.data, value: ethers.toQuantity(status.price), gas: ethers.toQuantity(gas),
+      }] });
       say('Transaction sent. Waiting for confirmation…');
-      const receipt = await tx.wait();
+      const receipt = await browser.waitForTransaction(hash);
+      if (!receipt || receipt.status !== 1) throw new Error('The mint transaction failed on-chain.');
       const ev = receipt.logs.map((l) => { try { return c.interface.parseLog(l); } catch { return null; } }).find((x) => x && x.name === 'Pressed');
       const id = ev.args.tokenId;
       const art = HP.render(ev.args.seed, difficulty);
