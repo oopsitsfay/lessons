@@ -367,6 +367,27 @@
     }
   }
 
+  // ------------------------------------------------------------ market storage check
+  async function marketCheck() {
+    const box = $('marketCheck');
+    box.textContent = 'Checking…';
+    try {
+      const r = await fetch('/api/admin/market-check', { credentials: 'same-origin', cache: 'no-store' });
+      const j = await r.json();
+      const fees = (j.fees || []).map((f) => `${f.label} ${f.percent}% → ${f.recipient.slice(0, 6)}…${f.recipient.slice(-4)}`).join(', ') || 'none';
+      const stored = j.stored ? Object.entries(j.stored).map(([k, v]) => `${k}: ${v.listings} listings, ${v.offers} offers`).join(' · ') : '';
+      box.innerHTML = '';
+      const line = (t, cls) => { const d = document.createElement('div'); d.textContent = t; if (cls) d.className = cls; box.appendChild(d); };
+      line(j.ok ? `Storage working (${j.backend}, write + read + delete in ${j.roundTripMs} ms)` : `Storage not working: ${j.error || r.status}`, j.ok ? 'ok' : 'bad');
+      line(`Fees: ${fees}`);
+      if (stored) line(`Stored: ${stored}`);
+    } catch (e) {
+      box.textContent = `Could not run the check: ${e.message}`;
+    }
+  }
+  $('marketCheckBtn').onclick = marketCheck;
+  marketCheck();
+
   // ------------------------------------------------------------ wiring
   $('signOutBtn').onclick = () => fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => { location.href = '/admin-login.html'; });
   $('connectBtn').onclick = () => connect().catch((e) => notify(HPWallet.friendly(e), 'error'));

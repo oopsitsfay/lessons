@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const KINDS = new Set(['listings', 'offers']);
+const KINDS = new Set(['listings', 'offers', 'health']);
 const safe = (name) => String(name).replace(/[^0-9a-zA-Zx]/g, '');
 function check(kind) {
   if (!KINDS.has(kind)) throw new Error(`unknown kind ${kind}`);
@@ -66,6 +66,13 @@ function blobStore() {
   };
 }
 
+function backend() {
+  if (process.env.MARKET_STORE_DIR) return 'folder';
+  if (process.env.BLOB_READ_WRITE_TOKEN) return 'blob (token)';
+  if (process.env.BLOB_STORE_ID) return 'blob (OIDC)';
+  return null;
+}
+
 function store() {
   if (process.env.MARKET_STORE_DIR) return fileStore(process.env.MARKET_STORE_DIR);
   // A connected store gives either a read-write token or a store id used with the function's OIDC token.
@@ -73,4 +80,4 @@ function store() {
   return null;
 }
 
-module.exports = { store };
+module.exports = { store, backend };
