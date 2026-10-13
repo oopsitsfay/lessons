@@ -182,10 +182,19 @@
   async function finish(w, accounts) {
     const chainId = parseInt(await w.provider.request({ method: 'eth_chainId' }), 16);
     try { localStorage.setItem(KEY, w.info.rdns); } catch {}
-    w.provider.on?.('accountsChanged', () => location.reload());
-    w.provider.on?.('chainChanged', () => location.reload());
-    w.provider.on?.('disconnect', () => { try { localStorage.removeItem(KEY); } catch {} location.reload(); });
-    return { provider: w.provider, address: accounts[0].toLowerCase(), chainId, name: w.info.name };
+    const address = accounts[0].toLowerCase();
+    // Many mobile wallets fire these right after connecting with the same values. Only a real
+    // switch of account or network reloads the page, otherwise sign-in would reset mid-flow.
+    w.provider.on?.('accountsChanged', (accs) => {
+      if (String((accs && accs[0]) || '').toLowerCase() !== address) location.reload();
+    });
+    w.provider.on?.('chainChanged', (id) => {
+      if (parseInt(id, 16) !== chainId) location.reload();
+    });
+    if (w.info.rdns === WC) {
+      w.provider.on?.('disconnect', () => { try { localStorage.removeItem(KEY); } catch {} location.reload(); });
+    }
+    return { provider: w.provider, address, chainId, name: w.info.name };
   }
 
   // Ask the user to connect (shows the wallet popup).

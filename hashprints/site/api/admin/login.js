@@ -33,7 +33,8 @@ module.exports = (req, res) => {
   const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
   if (m.domain !== host) return reply(res, 400, { error: 'Sign-in message is for a different site.' });
   const age = Date.now() - m.issued;
-  if (!Number.isFinite(age) || age > MAX_AGE_MS || age < -60 * 1000) return reply(res, 400, { error: 'Sign-in message expired. Try again.' });
+  // Phone clocks drift, so allow the same 5 minutes either side.
+  if (!Number.isFinite(age) || Math.abs(age) > MAX_AGE_MS) return reply(res, 400, { error: "Sign-in message expired, or your device's clock is off. Check the time and try again." });
 
   let signer;
   try { signer = verifyMessage(message, signature).toLowerCase(); } catch { return reply(res, 400, { error: 'Invalid signature.' }); }
@@ -41,6 +42,7 @@ module.exports = (req, res) => {
   if (!adminWallets().includes(signer)) return reply(res, 403, { error: 'This wallet is not an admin.' });
 
   const token = sign({ a: signer, exp: Math.floor(Date.now() / 1000) + TTL_SECONDS });
-  const cookie = `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${TTL_SECONDS}`;
+  // Lax (not Strict) so wallet in-app browsers keep the cookie on the follow-up navigation.
+  const cookie = `${COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${TTL_SECONDS}`;
   return reply(res, 200, { ok: true, address: signer }, cookie);
 };
