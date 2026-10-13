@@ -1,5 +1,11 @@
 {
   "walletConnectProjectId": "",
-  "main": { "chainId": 1, "address": "" },
-  "test": { "chainId": 1, "address": "" }
+  "main": {
+    "chainId": 1,
+    "address": ""
+  },
+  "test": {
+    "chainId": 11155111,
+    "address": "0x3C47C7B44224d7ea518a1435C200D97F82D3f8b7"
+  }
 }
