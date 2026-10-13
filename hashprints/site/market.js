@@ -117,8 +117,10 @@
       await send(market, market.weth, M.wethInterface.encodeFunctionData('deposit', []), missing, onStatus, label('wrap'));
     }
     if (allowance < amountWei) {
-      onStatus?.(`${label('approve')}Allow Seaport to use your WETH, only for offers you sign. `);
-      await send(market, market.weth, M.wethInterface.encodeFunctionData('approve', [market.seaport, ethers.MaxUint256]), null, onStatus, label('approve'));
+      // Approve only what this offer needs on top of what's already approved, never an unlimited amount.
+      const target = allowance + amountWei;
+      onStatus?.(`${label('approve')}Allow Seaport to use up to ${eth(target, 'WETH')} of your WETH, only for offers you sign. `);
+      await send(market, market.weth, M.wethInterface.encodeFunctionData('approve', [market.seaport, target]), null, onStatus, label('approve'));
     }
     const sp = new ethers.Contract(market.seaport, M.SEAPORT_ABI, provider);
     const t = now();
