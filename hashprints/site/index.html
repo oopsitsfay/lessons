@@ -398,22 +398,7 @@
     <div class="kicker">Contract</div>
     <h2>Contract</h2>
     <p class="lede">An OpenZeppelin ERC-721 with the minting logic built in. The browser uses the same hash function as the contract, so a hash found on this site is accepted on-chain.</p>
-    <div class="cols-2">
-      <div>
-        <h3>Main functions</h3>
-<pre>press(uint256 nonce) payable
-  requires keccak256(abi.encode(address(this),
-    msg.sender, nonce)) to have at least
-    difficulty() leading zero bits
-  requires msg.value == price()
-
-price()           0.000315 ETH
-difficulty()      16 + run / 2
-seedOf(tokenId)   the token's hash
-pressedBy(wallet) mints so far (max 2)
-tokenURI(id)      &lt;base&gt;id?seed=…&amp;d=…</pre>
-        <p><a href="https://github.com/oopsitsfay/lessons/blob/claude/fervent-babbage-e0f7cf/hashprints/contracts/HashPrints.sol">HashPrints.sol on GitHub</a></p>
-      </div>
+    <div style="max-width:720px">
       <div class="table-scroll">
         <table>
           <thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead>
