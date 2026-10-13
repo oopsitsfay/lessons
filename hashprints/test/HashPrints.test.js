@@ -4,11 +4,11 @@ const { setBalance } = require('@nomicfoundation/hardhat-network-helpers');
 const HP = require('../site/hashprints');
 
 const PRICE = HP.CONFIG.priceWei;
-const ctorArgs = (c) => [c.name, c.symbol, c.priceWei, c.baseURI, c.runSize, c.runs, c.artistProofs];
+const ctorArgs = (c, owner) => [c.name, c.symbol, c.priceWei, c.baseURI, c.runSize, c.runs, c.artistProofs, owner];
 
 async function deploy(shape = HP.COLLECTIONS.main) {
   const [owner, alice, bob] = await ethers.getSigners();
-  const prints = await ethers.deployContract('HashPrints', ctorArgs(shape));
+  const prints = await ethers.deployContract('HashPrints', ctorArgs(shape, owner.address));
   return { prints, owner, alice, bob, address: await prints.getAddress() };
 }
 
@@ -35,8 +35,10 @@ describe('HashPrints', function () {
     expect(await test.symbol()).to.equal('TESTPRINT');
     expect(await test.MAX_SUPPLY()).to.equal(10n);
     const Factory = await ethers.getContractFactory('HashPrints');
-    await expect(ethers.deployContract('HashPrints', ['x', 'x', PRICE, '', 0, 1, 0])).to.be.revertedWithCustomError(Factory, 'BadConfig');
-    await expect(ethers.deployContract('HashPrints', ['x', 'x', PRICE, '', 1000, 100, 0])).to.be.revertedWithCustomError(Factory, 'BadConfig');
+    const [deployer] = await ethers.getSigners();
+    await expect(ethers.deployContract('HashPrints', ['x', 'x', PRICE, '', 0, 1, 0, deployer.address])).to.be.revertedWithCustomError(Factory, 'BadConfig');
+    await expect(ethers.deployContract('HashPrints', ['x', 'x', PRICE, '', 1000, 100, 0, deployer.address])).to.be.revertedWithCustomError(Factory, 'BadConfig');
+    await expect(ethers.deployContract('HashPrints', ['x', 'x', PRICE, '', 5, 2, 0, ethers.ZeroAddress])).to.be.revertedWithCustomError(Factory, 'OwnableInvalidOwner');
   });
 
   it('JS proof hash and zero-bit count match the contract', async () => {
@@ -198,6 +200,22 @@ describe('HashPrints', function () {
     await expect(prints.connect(owner).lockBaseURI()).to.emit(prints, 'BaseURILocked').withArgs('https://hashprints.vercel.app/api/meta/');
     expect(await prints.baseURILocked()).to.equal(true);
     await expect(prints.connect(owner).setBaseURI('https://evil.example/')).to.be.revertedWithCustomError(prints, 'BaseURIIsLocked');
+  });
+
+  it('deploys through the public CREATE2 deployer with the named owner', async () => {
+    // Arachnid's deterministic deployment proxy; runtime code read from mainnet (eth_getCode).
+    const PROXY = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
+    await ethers.provider.send('hardhat_setCode', [PROXY, '0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3']);
+    const [, alice] = await ethers.getSigners();
+    const Factory = await ethers.getContractFactory('HashPrints');
+    const { data: initcode } = await Factory.getDeployTransaction(...ctorArgs(HP.COLLECTIONS.test, alice.address));
+    const salt = ethers.id('hashprints-test');
+    const predicted = ethers.getCreate2Address(PROXY, salt, ethers.keccak256(initcode));
+    await (await alice.sendTransaction({ to: PROXY, data: ethers.concat([salt, initcode]) })).wait();
+    const prints = await ethers.getContractAt('HashPrints', predicted);
+    expect(await prints.owner()).to.equal(alice.address);
+    expect(await prints.name()).to.equal('Test HashPrint');
+    expect(await prints.MAX_SUPPLY()).to.equal(10n);
   });
 
   it('ownership transfers in two steps', async () => {

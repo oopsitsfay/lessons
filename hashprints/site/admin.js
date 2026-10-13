@@ -7,6 +7,8 @@
     11155111: { name: 'Sepolia testnet', hex: '0xaa36a7', explorer: 'https://sepolia.etherscan.io', main: false },
     31337: { name: 'Local dev chain', hex: '0x7a69', explorer: null, main: false },
   };
+  // Arachnid's deterministic deployment proxy: same address on mainnet, Sepolia and most chains.
+  const CREATE2_DEPLOYER = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
@@ -116,6 +118,7 @@
       BigInt($('cRunSize').value),
       BigInt($('cRuns').value),
       BigInt($('cAP').value),
+      account, // owner: the connected wallet, not the deployer contract
     ];
   }
 
@@ -128,9 +131,19 @@
       const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
       notify('Deploy: confirm in your wallet…');
       $('deployStatus').textContent = 'Confirm in your wallet…';
-      const { data } = await factory.getDeployTransaction(...args);
-      const receipt = await sendTx({ data });
-      const address = receipt.contractAddress.toLowerCase();
+      const { data: initcode } = await factory.getDeployTransaction(...args);
+      let receipt, address;
+      if ((await provider.getCode(CREATE2_DEPLOYER)) !== '0x') {
+        // Ordinary transaction to the public CREATE2 deployer, which creates the contract.
+        // Works in wallets that can't send contract-creation transactions (e.g. Zerion).
+        const salt = ethers.hexlify(crypto.getRandomValues(new Uint8Array(32)));
+        address = ethers.getCreate2Address(CREATE2_DEPLOYER, salt, ethers.keccak256(initcode)).toLowerCase();
+        receipt = await sendTx({ to: CREATE2_DEPLOYER, data: ethers.concat([salt, initcode]) });
+        if ((await provider.getCode(address)) === '0x') throw new Error('The deploy transaction confirmed but no contract was created.');
+      } else {
+        receipt = await sendTx({ data: initcode });
+        address = receipt.contractAddress.toLowerCase();
+      }
       notify(`Deployed ${args[0]} at ${short(address)} ✓`); log(`Deploy: ${args[0]} at ${address} (block ${receipt.blockNumber}, ${receipt.gasUsed.toLocaleString()} gas)`);
       const saved = store.get('hpadmin.contracts', []);
       saved.unshift({ chainId, address, name: args[0], symbol: args[1], block: receipt.blockNumber, ctorArgs: factory.interface.encodeDeploy(args).slice(2) });

@@ -13,6 +13,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 ///   The hash becomes the print's seed. Extra zero bits make a rarer print, never a cheaper one.
 ///   Supply shape is set at deploy time, so the same code runs the main 3,333 edition
 ///   (10 runs × 333 + 3 artist proofs) and small live tests such as Test HashPrint (2 × 5).
+///   The owner is a constructor argument, so the contract can be created through a CREATE2
+///   deployer (an ordinary transaction that wallets without contract-creation support can send).
 contract HashPrints is ERC721, Ownable2Step {
     uint256 public constant BASE_DIFFICULTY = 16;
     uint256 public constant MAX_PER_WALLET = 2;
@@ -70,8 +72,9 @@ contract HashPrints is ERC721, Ownable2Step {
         string memory baseURI_,
         uint256 runSize_,
         uint256 runs_,
-        uint256 artistProofs_
-    ) ERC721(name_, symbol_) Ownable(msg.sender) {
+        uint256 artistProofs_,
+        address owner_
+    ) ERC721(name_, symbol_) Ownable(owner_) {
         if (
             runSize_ == 0 || runs_ == 0 || runSize_ * runs_ > type(uint16).max || artistProofs_ > type(uint8).max
                 || price_ > type(uint128).max

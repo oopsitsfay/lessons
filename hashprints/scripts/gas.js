@@ -2,7 +2,7 @@ const { ethers } = require('hardhat');
 const HP = require('../site/hashprints');
 (async () => {
   const [owner, alice] = await ethers.getSigners();
-  const prints = await ethers.deployContract('HashPrints', [...Object.values((({ name, symbol, priceWei, baseURI, runSize, runs, artistProofs }) => ({ name, symbol, priceWei, baseURI, runSize, runs, artistProofs }))(HP.COLLECTIONS.main))]);
+  const prints = await ethers.deployContract('HashPrints', [...Object.values((({ name, symbol, priceWei, baseURI, runSize, runs, artistProofs }) => ({ name, symbol, priceWei, baseURI, runSize, runs, artistProofs }))(HP.COLLECTIONS.main)).concat((await ethers.getSigners())[0].address)]);
   const deployGas = (await prints.deploymentTransaction().wait()).gasUsed;
   await prints.openPress();
   const proof = await HP.grind({ contract: await prints.getAddress(), minter: alice.address, difficulty: 16 });

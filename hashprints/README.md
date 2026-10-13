@@ -55,7 +55,7 @@ If either is missing, nobody can sign in. The gate fails closed.
 
 Once signed in, connect the wallet that should own the contract.
 
-1. Pick a preset (Test HashPrint or HashPrints), check the fields, then click **Estimate cost** and **Deploy**.
+1. Pick a preset (Test HashPrint or HashPrints), check the fields, then click **Deploy**. The page sends an ordinary transaction to the public CREATE2 deployer (`0x4e59b44847b379578588920cA78FbF26c0B4956C`), which creates the contract with your wallet as owner. This works in wallets that can't send contract-creation transactions, such as Zerion. Your wallet sets the gas.
 2. Verify the source on Etherscan using the values in the *Verify* panel.
 3. Put the contract address in `site/mint-config.json` (or share the public mint link the admin page shows).
 4. **Go live**. Until then, the contract rejects every mint and the mint page shows "Not live". Going live can't be undone, and it locks the price.

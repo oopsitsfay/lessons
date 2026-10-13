@@ -12,6 +12,6 @@ const HP = require('../site/hashprints');
     return;
   }
   const t = HP.COLLECTIONS.test;
-  const c = await ethers.deployContract('HashPrints', [t.name, t.symbol, t.priceWei, t.baseURI, t.runSize, t.runs, t.artistProofs]);
+  const c = await ethers.deployContract('HashPrints', [t.name, t.symbol, t.priceWei, t.baseURI, t.runSize, t.runs, t.artistProofs, (await ethers.getSigners())[0].address]);
   console.log(await c.getAddress());
 })();
