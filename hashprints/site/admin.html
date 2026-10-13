@@ -78,7 +78,10 @@
     <a class="logo" href="/">HASH<span>/</span>PRINTS<small>admin</small></a>
     <span class="grow"></span>
     <span class="pill hidden" id="netPill"></span>
-    <button class="ghost hidden" id="switchMain" type="button">Switch to mainnet</button>
+    <select id="netSelect" class="hidden" aria-label="Network" style="width:auto;padding:8px 10px;font:700 12px 'JetBrains Mono',monospace;border:2px solid var(--ink);background:transparent;color:var(--ink)">
+      <option value="1">Ethereum mainnet</option>
+      <option value="11155111">Sepolia testnet</option>
+    </select>
     <button id="connectBtn" type="button">Connect wallet</button>
     <button class="ghost" id="signOutBtn" type="button">Sign out</button>
   </div>

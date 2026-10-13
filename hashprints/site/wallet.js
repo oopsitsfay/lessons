@@ -247,12 +247,34 @@
     } catch { return null; }
   }
 
+  // Networks the wallet can be asked to add if it doesn't know them yet.
+  const ADDABLE = {
+    '0xaa36a7': {
+      chainId: '0xaa36a7',
+      chainName: 'Sepolia',
+      nativeCurrency: { name: 'Sepolia Ether', symbol: 'ETH', decimals: 18 },
+      rpcUrls: ['https://ethereum-sepolia-rpc.publicnode.com'],
+      blockExplorerUrls: ['https://sepolia.etherscan.io'],
+    },
+  };
+
   async function switchChain(provider, hexId, name) {
     try {
       await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] });
       return true;
     } catch (e) {
-      toast(e?.code === 4001 ? 'Network switch cancelled.' : `Switch your wallet to ${name} and try again.`, 'error');
+      if (e?.code === 4001) { toast('Network switch cancelled.', 'error'); return false; }
+      // 4902 = the wallet doesn't know this network yet: offer to add it, which also switches.
+      const unknown = e?.code === 4902 || e?.data?.originalError?.code === 4902 || /unrecognized|unknown chain|not added/i.test(e?.message || '');
+      if (unknown && ADDABLE[hexId]) {
+        try {
+          await provider.request({ method: 'wallet_addEthereumChain', params: [ADDABLE[hexId]] });
+          return true;
+        } catch (e2) {
+          if (e2?.code === 4001) { toast('Network switch cancelled.', 'error'); return false; }
+        }
+      }
+      toast(`This wallet couldn't switch to ${name}. Switch it inside the wallet app${hexId === '0xaa36a7' ? ' (you may need to turn on test networks in its settings)' : ''}, then reload.`, 'error');
       return false;
     }
   }

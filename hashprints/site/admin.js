@@ -83,10 +83,22 @@
     $('netPill').textContent = `${c.name} · ${short(account)}`;
     $('netPill').className = `pill ${c.main ? 'main' : 'test'}`;
     $('connectBtn').classList.add('hidden');
-    $('switchMain').classList.toggle('hidden', chainId === 1 || chainId === 31337);
-    $('switchMain').onclick = () => HPWallet.switchChain(w.provider, '0x1', 'Ethereum mainnet');
+    // Network picker: switches the wallet (adding Sepolia if needed); the page reloads on change.
+    const sel = $('netSelect');
+    sel.classList.toggle('hidden', chainId === 31337);
+    if (!CHAINS[chainId] || chainId === 31337) {
+      if (!sel.querySelector('option[value="other"]')) sel.insertAdjacentHTML('afterbegin', `<option value="other">Other network (${chainId})</option>`);
+    }
+    sel.value = CHAINS[chainId] && chainId !== 31337 ? String(chainId) : 'other';
+    sel.onchange = async () => {
+      const id = Number(sel.value);
+      if (!CHAINS[id]) return;
+      notify(`Switching your wallet to ${CHAINS[id].name}…`);
+      const ok = await HPWallet.switchChain(w.provider, CHAINS[id].hex, CHAINS[id].name);
+      if (!ok) sel.value = CHAINS[chainId] ? String(chainId) : 'other';
+    };
     log(`Connected ${account} on ${c.name}`);
-    if (!CHAINS[chainId]) notify('Your wallet is on another network. Switch to Ethereum mainnet.', 'error');
+    if (!CHAINS[chainId]) notify('Your wallet is on another network. Pick Ethereum mainnet or Sepolia at the top.', 'error');
     renderSaved();
     const fromUrl = new URLSearchParams(location.search).get('c');
     if (fromUrl && ethers.isAddress(fromUrl)) await loadContract(fromUrl);
@@ -124,7 +136,7 @@
 
   async function deploy() {
     if (!signer) return notify('Connect a wallet first.', 'error');
-    if (!CHAINS[chainId]) return notify('Switch your wallet to Ethereum mainnet first.', 'error');
+    if (!CHAINS[chainId]) return notify('Pick Ethereum mainnet or Sepolia at the top first.', 'error');
     let args;
     try { args = ctorArgs(); } catch (e) { return notify(`Check the deploy fields: ${errMsg(e)}`, 'error'); }
     try {
