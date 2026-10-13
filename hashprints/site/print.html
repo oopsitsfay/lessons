@@ -39,6 +39,24 @@
   h2 { font: 700 13px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 0 0 6px; }
   td a { text-decoration-color: var(--accent); }
   .hist td:first-child { text-align: left; }
+  .trade { border: 2px solid var(--ink); padding: 16px; margin: 0 0 24px; }
+  .trade .row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .trade .lbl { font: 12px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+  .trade .price { font: 700 28px "JetBrains Mono", monospace; }
+  .trade .sub { font: 12px "JetBrains Mono", monospace; color: var(--muted); margin: 4px 0 14px; word-break: normal; }
+  .trade .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .trade .acts button { flex: 1 1 160px; }
+  .trade button.primary { background: var(--ink); color: var(--paper); }
+  .trade button.primary:hover { background: var(--accent); border-color: var(--accent); color: #000; }
+  .trade button:disabled { opacity: .45; cursor: not-allowed; }
+  .trade form { margin-top: 14px; display: grid; gap: 10px; }
+  .trade label { font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); display: grid; gap: 6px; }
+  .trade input, .trade select { font: 15px "JetBrains Mono", monospace; padding: 10px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); width: 100%; }
+  .trade .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .trade .split { font: 12px "JetBrains Mono", monospace; color: var(--ink-2, var(--muted)); line-height: 1.7; }
+  .trade .msg { font: 13px "JetBrains Mono", monospace; margin-top: 12px; min-height: 1.2em; word-break: break-word; }
+  .trade .msg.bad { color: #c62828; }
+  .trade .msg.good { color: #00835a; }
 </style>
 </head>
 <body>
@@ -46,6 +64,10 @@
   <div class="top"><a href="/" style="text-decoration:none">HASH<span>/</span>PRINTS</a><nav><a href="collection.html" id="navCollection">Collection</a><a href="mint.html" id="navMint">Mint →</a></nav></div>
   <div id="view"></div>
 </div>
+<script src="vendor/ethers-6.umd.min.js"></script>
+<script src="wallet.js"></script>
+<script src="market-core.js"></script>
+<script src="market.js"></script>
 <script src="hashprints.js"></script>
 <script>
   (async function () {
@@ -87,6 +109,7 @@
         <div>
           <h1>${heading}</h1>
           <div class="sub">seed ${seed}</div>
+          <div class="trade" id="trade" hidden></div>
           <table id="own" hidden></table>
           <h2>Traits</h2>
           <table id="t"></table>
@@ -133,15 +156,127 @@
       addRow(own, 'Minted', link(`${when(token.time)} ↗`, `${chain.explorer}/tx/${token.tx}`, true));
       addRow(own, 'Token', link(`${short(chain.address)} / ${id} ↗`, `${chain.explorer}/nft/${chain.address}/${id}`, true));
       const events = chain.activity.filter((a) => a.id === id);
+      if (token.lastSale) addRow(own, 'Last sale', HPTrade.eth(token.lastSale.price));
       if (events.length > 1) {
         const hist = document.getElementById('hist');
         document.getElementById('histWrap').hidden = false;
         for (const ev of events) {
           const span = document.createElement('span');
-          span.append(ev.kind === 'mint' ? 'Minted to ' : `${short(ev.from)} → `, wallet(ev.to), ' · ', link(when(ev.time), `${chain.explorer}/tx/${ev.tx}`, true));
-          addRow(hist, ev.kind === 'mint' ? 'Mint' : 'Transfer', span);
+          const priced = ev.kind === 'sale' ? `${HPTrade.eth(ev.price)}${ev.currency === 'WETH' ? ' (WETH)' : ''} · ` : '';
+          span.append(priced, ev.kind === 'mint' ? 'Minted to ' : `${short(ev.from)} → `, wallet(ev.to), ' · ', link(when(ev.time), `${chain.explorer}/tx/${ev.tx}`, true));
+          addRow(hist, ev.kind === 'mint' ? 'Mint' : ev.kind === 'sale' ? 'Sale' : 'Transfer', span);
         }
       }
+      trade(token, chain).catch(() => {});
+    }
+
+    // ---------------------------------------------------------------- buy / sell
+    async function trade(token, chain) {
+      const box = document.getElementById('trade');
+      let market;
+      try { market = await HPTrade.load(key); } catch { return; }
+      if (!market.enabled) return;
+      await HPTrade.connect(market.chainId, true).catch(() => null);
+      const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+      const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+      const ends = (t) => new Date(t * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      let owner = token.owner;
+      let busy = false;
+      let selling = false;
+
+      const el = (tag, attrs = {}, ...kids) => {
+        const n = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) if (k === 'class') n.className = v; else if (k.startsWith('on')) n[k] = v; else n.setAttribute(k, v);
+        n.append(...kids.filter((k) => k !== null && k !== undefined));
+        return n;
+      };
+      const msg = el('div', { class: 'msg', role: 'status' });
+      const say = (text, kind = '') => { msg.textContent = text; msg.className = `msg ${kind}`; };
+
+      async function act(fn, done) {
+        if (busy) return;
+        busy = true;
+        render();
+        try {
+          await fn((t) => say(t));
+          await done();
+        } catch (e) {
+          say(HPTrade.friendly(e), 'bad');
+        } finally {
+          busy = false;
+          render();
+        }
+      }
+
+      async function connectThen(next) {
+        const w = await HPTrade.connect(market.chainId, false);
+        if (w) { render(); if (next) next(); }
+      }
+
+      function sellForm() {
+        const price = el('input', { type: 'text', inputmode: 'decimal', placeholder: '0.01', 'aria-label': 'Price in ETH', autocomplete: 'off' });
+        const days = el('select', { 'aria-label': 'Listing length' },
+          ...[[1, '1 day'], [3, '3 days'], [7, '7 days'], [30, '30 days'], [90, '90 days'], [180, '180 days']].map(([v, t]) => { const o = el('option', { value: v }, t); if (v === 30) o.selected = true; return o; }));
+        const split = el('div', { class: 'split' });
+        const submit = el('button', { type: 'submit', class: 'primary' }, 'List for sale');
+        const update = () => {
+          let wei = null;
+          try { if (/^\d*\.?\d+$/.test(price.value.trim())) wei = ethers.parseEther(price.value.trim()); } catch {}
+          submit.disabled = !wei || wei <= 0n || busy;
+          if (!wei || wei <= 0n) { split.textContent = 'Enter a price in ETH.'; return; }
+          const s = HPMarket.split(wei, market.royalty);
+          split.textContent = market.royalty
+            ? `Buyer pays ${HPTrade.eth(s.price)} · creator royalty ${market.royalty.bps / 100}% (${HPTrade.eth(s.fee)}) · you get ${HPTrade.eth(s.seller)}`
+            : `Buyer pays ${HPTrade.eth(s.price)} · you get all of it. No marketplace fee.`;
+        };
+        price.oninput = update;
+        update();
+        const form = el('form', { onsubmit: (e) => {
+          e.preventDefault();
+          const priceWei = ethers.parseEther(price.value.trim());
+          act((status) => HPTrade.list(market, { tokenId: token.id, priceWei, days: Number(days.value), onStatus: status }), async () => {
+            market = await HPTrade.load(key);
+            selling = false;
+            say('Listed. Anyone can buy it now.', 'good');
+          });
+        } },
+        el('div', { class: 'two' }, el('label', {}, 'Price (ETH)', price), el('label', {}, 'Listed for', days)),
+        split,
+        el('div', { class: 'acts' }, submit, el('button', { type: 'button', onclick: () => { selling = false; render(); } }, 'Back')));
+        setTimeout(() => price.focus(), 0);
+        return form;
+      }
+
+      function render() {
+        const me = HPTrade.wallet?.address;
+        const listing = market.listings.find((l) => l.tokenId === token.id && same(l.seller, owner));
+        const mine = same(me, owner);
+        const kids = [];
+        if (listing) {
+          kids.push(el('div', { class: 'row1' }, el('span', { class: 'lbl' }, 'For sale'), el('span', { class: 'price' }, HPTrade.eth(listing.price))));
+          kids.push(el('div', { class: 'sub' }, `Listed by ${mine ? 'you' : short(listing.seller)} · until ${ends(listing.endTime)} · settles on Seaport`));
+          const acts = el('div', { class: 'acts' });
+          if (!me) acts.append(el('button', { type: 'button', class: 'primary', onclick: () => connectThen() }, 'Connect wallet to buy'));
+          else if (mine) acts.append(el('button', { type: 'button', onclick: () => act((st) => HPTrade.cancel(market, listing, st), async () => { market = await HPTrade.load(key); say('Listing cancelled.', 'good'); }) }, 'Cancel listing'));
+          else acts.append(el('button', { type: 'button', class: 'primary', onclick: () => act((st) => HPTrade.buy(market, listing, st), async () => {
+            owner = me;
+            market = await HPTrade.load(key).catch(() => market);
+            say('Bought. It\'s in your wallet now; the page will catch up in a few seconds.', 'good');
+            setTimeout(() => location.reload(), 6000);
+          }) }, 'Buy now'));
+          for (const b of acts.querySelectorAll('button')) b.disabled = busy;
+          kids.push(acts);
+        } else {
+          kids.push(el('div', { class: 'row1' }, el('span', { class: 'lbl' }, 'Not for sale'), token.lastSale ? el('span', { class: 'sub' }, `Last sale ${HPTrade.eth(token.lastSale.price)}`) : null));
+          if (mine && selling) kids.push(sellForm());
+          else if (mine) kids.push(el('div', { class: 'acts' }, el('button', { type: 'button', class: 'primary', onclick: () => { selling = true; say(''); render(); } }, 'List for sale')));
+          else if (!me) kids.push(el('div', { class: 'acts' }, el('button', { type: 'button', onclick: () => connectThen(() => { if (same(HPTrade.wallet?.address, owner)) { selling = true; render(); } }) }, 'Own this print? Connect to sell')));
+        }
+        kids.push(msg);
+        box.replaceChildren(...kids);
+        box.hidden = false;
+      }
+      render();
     }
 
     const save = (name, blob) => {

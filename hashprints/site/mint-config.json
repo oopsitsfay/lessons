@@ -9,5 +9,9 @@
     "chainId": 11155111,
     "address": "0x3C47C7B44224d7ea518a1435C200D97F82D3f8b7",
     "fromBlock": 11902679
+  },
+  "market": {
+    "royaltyBps": 0,
+    "royaltyRecipient": ""
   }
 }

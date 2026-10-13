@@ -117,6 +117,8 @@
   .card .info { padding: 9px 10px 10px; border-top: 1px solid var(--rule); background: var(--paper); }
   .card .name { font-weight: 700; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
   .card .sub { color: var(--muted); font: 11px "JetBrains Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .card .price { font: 700 14px "JetBrains Mono", monospace; margin-top: 6px; }
+  .ev.sale { color: var(--accent); }
   .tag { font: 700 10px "JetBrains Mono", monospace; letter-spacing: .5px; text-transform: uppercase; padding: 2px 6px; border: 1px solid currentColor; white-space: nowrap; }
   .tag.gold { color: var(--gold); }
   .tag.holo { color: var(--holo); }
@@ -182,6 +184,8 @@
         <option value="new">Newest</option>
         <option value="old">Oldest</option>
         <option value="id">Number</option>
+        <option value="price" id="sortPrice" hidden>Price: low to high</option>
+        <option value="price-desc" id="sortPriceDesc" hidden>Price: high to low</option>
         <option value="work">Most work</option>
       </select>
     </div>

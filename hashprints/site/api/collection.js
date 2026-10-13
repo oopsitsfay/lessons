@@ -2,13 +2,11 @@
 // read straight from the chain (Pressed + Transfer logs). No database: the CDN caches the answer
 // for a few seconds and a warm instance only fetches logs for blocks it hasn't seen yet.
 const { ethers } = require('ethers');
-const CONFIG = require('../mint-config.json');
+const CONFIG = process.env.HP_CONFIG ? JSON.parse(process.env.HP_CONFIG) : require('../mint-config.json');
 const HP = require('../hashprints.js');
+const M = require('../market-core.js');
 
-const CHAINS = {
-  1: { rpc: 'https://ethereum-rpc.publicnode.com', explorer: 'https://etherscan.io', blockscout: 'https://eth.blockscout.com/api/v2' },
-  11155111: { rpc: 'https://ethereum-sepolia-rpc.publicnode.com', explorer: 'https://sepolia.etherscan.io', blockscout: 'https://eth-sepolia.blockscout.com/api/v2' },
-};
+const { CHAINS, provider: providerFor } = require('./_lib/chains.js');
 const ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
   'event Pressed(uint256 indexed tokenId, address indexed minter, bytes32 seed, uint256 run, uint256 difficulty, uint256 extraBits)',
@@ -26,9 +24,13 @@ const ZERO = ethers.ZeroAddress;
 const ACTIVITY_LIMIT = 200;
 const EXACT_TIMES = 40; // newest blocks that get a real timestamp; older ones are estimated
 
-// Per warm instance: logs already fetched and block timestamps already looked up.
+const SALE_LOOKUPS = 300; // receipts read per request at most; the rest wait for the next one
+const WETH = { 1: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' };
+
+// Per warm instance: logs already fetched, block timestamps and sale lookups already done.
 const scans = new Map();
 const times = new Map();
+const sales = new Map(); // tx hash -> [{ id, price, currency }]
 
 async function fetchLogs(provider, address, from, to) {
   const out = [];
@@ -78,6 +80,39 @@ async function blockTimes(provider, blocks, head) {
   return (b) => times.get(b) ?? head.timestamp - (head.number - b) * 12;
 }
 
+// A transfer is a sale when Seaport (the exchange OpenSea and this site use) settled it in the
+// same transaction. The price is what the buyer paid: ETH for a listing, WETH for an accepted offer.
+async function findSales(provider, cfg, txs) {
+  const seaport = ((CONFIG.market && CONFIG.market.seaport) || M.SEAPORT).toLowerCase();
+  const collection = cfg.address.toLowerCase();
+  const todo = [...new Set(txs)].filter((h) => !sales.has(h)).slice(0, SALE_LOOKUPS);
+  await Promise.all(todo.map(async (hash) => {
+    const receipt = await provider.getTransactionReceipt(hash).catch(() => null);
+    if (!receipt) return;
+    const found = [];
+    for (const log of receipt.logs) {
+      if (log.address.toLowerCase() !== seaport) continue;
+      let ev = null;
+      try { ev = M.seaportInterface.parseLog(log); } catch {}
+      if (!ev || ev.name !== 'OrderFulfilled') continue;
+      const isPrint = (i) => [2, 4].includes(Number(i.itemType)) && i.token.toLowerCase() === collection;
+      const money = (items) => items.filter((i) => Number(i.itemType) <= 1);
+      let item = ev.args.offer.find(isPrint);
+      let paid = item ? money(ev.args.consideration) : null;
+      if (!item) {
+        item = ev.args.consideration.find(isPrint);
+        paid = item ? money(ev.args.offer) : null;
+      }
+      if (!item || !paid || !paid.length) continue;
+      const token = paid[0].token.toLowerCase();
+      const currency = token === ethers.ZeroAddress ? 'ETH' : token === WETH[cfg.chainId] ? 'WETH' : 'token';
+      found.push({ id: Number(item.identifier), price: paid.reduce((sum, i) => sum + i.amount, 0n).toString(), currency });
+    }
+    sales.set(hash, found);
+  }));
+  return (tx, id) => (sales.get(tx) || []).find((x) => x.id === id) || null;
+}
+
 function build(logs) {
   const tokens = new Map();
   const activity = [];
@@ -120,8 +155,7 @@ module.exports = async (req, res) => {
     return res.end(JSON.stringify({ key, deployed: false, name: shape.name }));
   }
   try {
-    const network = ethers.Network.from(cfg.chainId);
-    const provider = new ethers.JsonRpcProvider(chain.rpc, network, { staticNetwork: network, batchMaxCount: 20 });
+    const provider = providerFor(cfg.chainId);
     const c = new ethers.Contract(cfg.address, ABI, provider);
     const head = await provider.getBlock('latest');
     const [total, max, pressed, openedAt, price, difficulty, run, logs] = await Promise.all([
@@ -129,6 +163,19 @@ module.exports = async (req, res) => {
       scan(provider, key, cfg, head.number),
     ]);
     const { tokens, activity } = build(logs);
+    const saleOf = await findSales(provider, cfg, activity.filter((a) => a.kind === 'transfer').map((a) => a.tx));
+    let volume = 0n;
+    let saleCount = 0;
+    const byId = new Map(tokens.map((t) => [t.id, t]));
+    for (const a of activity.slice().reverse()) {
+      if (a.kind !== 'transfer') continue;
+      const sale = saleOf(a.tx, a.id);
+      if (!sale) continue;
+      Object.assign(a, { kind: 'sale', price: sale.price, currency: sale.currency });
+      if (sale.currency !== 'token') { volume += BigInt(sale.price); saleCount++; }
+      const t = byId.get(a.id);
+      if (t) t.lastSale = { price: sale.price, currency: sale.currency, block: a.block };
+    }
     const recent = activity.slice(0, ACTIVITY_LIMIT);
     const timeOf = await blockTimes(provider, recent.map((a) => a.block).concat(tokens.slice(-EXACT_TIMES).map((t) => t.block)), head);
     for (const t of tokens) t.time = timeOf(t.block);
@@ -158,6 +205,8 @@ module.exports = async (req, res) => {
       tokens,
       activity: recent,
       activityTotal: activity.length,
+      volume: volume.toString(),
+      sales: saleCount,
     }));
   } catch (e) {
     res.statusCode = 502;

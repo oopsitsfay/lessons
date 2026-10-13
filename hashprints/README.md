@@ -65,6 +65,19 @@ Once signed in, connect the wallet that should own the contract.
 
 Owner-only actions are enforced by the contract. The page itself holds no keys.
 
+## Buying and selling
+
+Prints can be listed and bought on the site itself (print pages and the collection page). It runs on **Seaport 1.6** (`0x0000000000000068F116a894984e2DB1123eB395`), the same open exchange contract OpenSea uses, so there is no marketplace contract of our own and the site never holds anyone's money.
+
+- **List:** the owner approves Seaport once (`setApprovalForAll`), then signs a fixed-price order for free. `POST /api/market` checks it against the chain (owner, approval, counter, not cancelled or filled, and Seaport's own signature check via a read-only `validate` call) and stores it.
+- **Buy:** the buyer calls `fulfillOrder` on Seaport with the ETH. Seaport moves the print and pays the seller (and the creator royalty, if set) in the same transaction.
+- **Cancel:** the seller calls `cancel` on Seaport. Listings that are sold, cancelled, expired or whose print moved are dropped automatically.
+- **Royalty:** `market.royaltyBps` (250 = 2.5%) and `market.royaltyRecipient` in `site/mint-config.json`. Listings made on this site must include it. No marketplace fee.
+- **Storage:** signed listings live in a Vercel Blob store (one JSON file per token). Create a **public** Blob store in the Vercel dashboard and connect it to the project; that adds `BLOB_READ_WRITE_TOKEN`. Without it the market is switched off and the pages hide the buy and sell buttons.
+- Sales made anywhere through Seaport (including OpenSea) show up in Activity with their price, and in the volume.
+
+`npm run test:market` (with `npx hardhat node` running) deploys real Seaport 1.6 code (`test/fixtures/seaport-1.6.json`, rebuilt by `scripts/build-seaport-fixture.js`) and runs list, buy, cancel and the listings the API must refuse.
+
 ## WalletConnect
 
 Paste a WalletConnect project id into `site/mint-config.json` (`walletConnectProjectId`) to add a WalletConnect option to the mint, sign-in and admin pages: a QR code on desktop, one tap on phones, and it works with almost any wallet app. Get the id free at [dashboard.reown.com](https://dashboard.reown.com) and add the site's domain to the project's allowed domains. With no id, the option is simply hidden.

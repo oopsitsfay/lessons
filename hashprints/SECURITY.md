@@ -50,6 +50,16 @@ Both actionable suggestions were applied: an event on `setPrice`, and a zero-add
 
 `/api/meta/:id` and `/api/image` are stateless. They render from the `seed` and `d` in the URL that the contract's `tokenURI` builds from chain state, and they reject seeds without enough zero bits or difficulties outside 16–20. Anyone can make the API draw an arbitrary valid seed, but marketplaces only follow the URL from `tokenURI`, so this can't misrepresent a real token.
 
+## Market
+
+The market adds no contract. Trades settle on Seaport 1.6, and the site's part is limited to storing signed orders and building transactions in the browser.
+
+- **What a seller signs:** one HashPrint for a fixed ETH amount paid to the seller (plus the configured royalty), no zone, no conduit, a set end date (at most 180 days). The page shows the split before signing.
+- **What the API accepts:** `api/market.js` rejects any order that doesn't have exactly that shape, then checks on chain that the seller owns the print, has approved Seaport, the order isn't cancelled or filled, the counter matches, and Seaport itself accepts the signature (read-only `validate`). Someone else's signature, a changed price or a missing royalty are refused (covered by `scripts/market-e2e.js`).
+- **What the store can't do:** a stored order can only ever be filled on the seller's terms. Deleting or altering the Blob store can hide listings but can't move a print or redirect a payment, because Seaport checks the signed order.
+- **Cancelling:** removing a listing from the site isn't enough, since anyone who saw the signed order can still fill it. Cancel is always an on-chain `cancel` on Seaport, and the pages only offer that.
+- **Approval:** `setApprovalForAll(Seaport)` lets Seaport move a seller's HashPrints only when one of their own signed orders is filled. It's the same approval OpenSea asks for.
+
 ## Before mainnet
 
 - [ ] Independent professional audit

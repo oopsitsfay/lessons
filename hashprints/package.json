@@ -5,7 +5,8 @@
     "test": "hardhat test",
     "serve": "http-server site -p 8080 -c-1",
     "export": "hardhat run scripts/export-artifact.js",
-    "build:walletconnect": "esbuild scripts/walletconnect-entry.js --bundle --minify --format=iife --platform=browser --target=es2020 --define:process.env.NODE_ENV=\\\"production\\\" --define:global=globalThis --outfile=site/vendor/walletconnect.js"
+    "build:walletconnect": "esbuild scripts/walletconnect-entry.js --bundle --minify --format=iife --platform=browser --target=es2020 --define:process.env.NODE_ENV=\\\"production\\\" --define:global=globalThis --outfile=site/vendor/walletconnect.js",
+    "test:market": "hardhat run --network localhost scripts/market-e2e.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.2",

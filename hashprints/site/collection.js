@@ -4,8 +4,8 @@
   const $ = (id) => document.getElementById(id);
   const PAGE = 60;
   const REFRESH_MS = 30000;
-  const FILTER_TRAITS = ['Rarity', 'Edition', 'Style', 'Symmetry', 'Registration', 'Glitch', 'Run', 'Inks'];
-  const OPEN_BY_DEFAULT = new Set(['Rarity', 'Edition', 'Style']);
+  const FILTER_TRAITS = ['Status', 'Rarity', 'Edition', 'Style', 'Symmetry', 'Registration', 'Glitch', 'Run', 'Inks'];
+  const OPEN_BY_DEFAULT = new Set(['Status', 'Rarity', 'Edition', 'Style']);
   const RARITY_ORDER = { 'Holo Foil': 2, 'Gold Leaf': 1, Common: 0 };
 
   const q = new URLSearchParams(location.search);
@@ -16,6 +16,8 @@
   const withC = (path) => (key === 'test' ? path + (path.includes('?') ? '&' : '?') + 'c=test' : path);
 
   let data = null;
+  let market = { enabled: false, listings: [] };
+  let listed = new Map(); // token id -> live listing
   let prints = []; // tokens + rendered art, in token order
   let tab = ['items', 'activity', 'holders'].includes(q.get('tab')) ? q.get('tab') : 'items';
   let shown = PAGE;
@@ -98,6 +100,7 @@
       return;
     }
     document.title = `${shape.name} Collection`;
+    if (key === 'test') $('desc').textContent = `A ${data.max}-print test run of HashPrints on ${data.chainId === 1 ? 'Ethereum' : 'Sepolia'}, used to try the mint and the market before the main collection.`;
     $('title').textContent = shape.name;
     const status = data.total >= data.max ? '<span class="badge">Sold out</span>'
       : data.live ? '<span class="badge live"><i></i>Minting now</span>' : '<span class="badge off"><i></i>Not live</span>';
@@ -105,9 +108,15 @@
     $('actions').innerHTML = `<a class="btn" href="${withC('mint.html')}">Mint</a>`;
     const holders = new Set(prints.map((p) => p.owner.toLowerCase())).size;
     const rare = prints.filter((p) => p.traits.Rarity !== 'Common').length;
-    $('stats').innerHTML = stat(`${data.total.toLocaleString()}<small style="color:var(--muted);font-weight:400"> / ${data.max.toLocaleString()}</small>`, 'Minted', true)
-      + stat(holders, 'Holders') + stat(eth(data.price), 'Mint price')
-      + stat(data.live ? `${data.run + 1} / ${data.runs}` : '–', 'Run') + stat(`${data.difficulty} bits`, 'Difficulty') + stat(rare, 'Gold / Holo');
+    const minted = stat(`${data.total.toLocaleString()}<small style="color:var(--muted);font-weight:400"> / ${data.max.toLocaleString()}</small>`, 'Minted', true);
+    if (market.enabled) {
+      const floor = market.listings.length ? eth(market.listings[0].price) : '–';
+      $('stats').innerHTML = minted + stat(holders, 'Holders') + stat(floor, 'Floor') + stat(market.listings.length, 'Listed')
+        + stat(data.volume && data.volume !== '0' ? eth(data.volume) : '0 ETH', `Volume · ${data.sales || 0} sales`) + stat(eth(data.price), 'Mint price');
+    } else {
+      $('stats').innerHTML = minted + stat(holders, 'Holders') + stat(eth(data.price), 'Mint price')
+        + stat(data.live ? `${data.run + 1} / ${data.runs}` : '–', 'Run') + stat(`${data.difficulty} bits`, 'Difficulty') + stat(rare, 'Gold / Holo');
+    }
     $('progress').style.width = `${(data.total / data.max) * 100}%`;
   }
 
@@ -122,7 +131,7 @@
 
   function renderFilters() {
     const list = scope();
-    const groups = FILTER_TRAITS.map((trait) => {
+    const groups = FILTER_TRAITS.filter((trait) => trait !== 'Status' || market.enabled).map((trait) => {
       const counts = new Map();
       for (const p of list) counts.set(p.traits[trait], (counts.get(p.traits[trait]) || 0) + 1);
       if (!counts.size) return '';
@@ -150,7 +159,15 @@
     if (sort === 'new') list.sort((a, b) => b.block - a.block || b.id - a.id);
     else if (sort === 'old') list.sort((a, b) => a.block - b.block || a.id - b.id);
     else if (sort === 'id') list.sort((a, b) => a.id - b.id);
-    else if (sort === 'work') list.sort((a, b) => b.extra - a.extra || (RARITY_ORDER[b.traits.Rarity] || 0) - (RARITY_ORDER[a.traits.Rarity] || 0) || a.id - b.id);
+    else if (sort === 'price' || sort === 'price-desc') {
+      const dir = sort === 'price' ? 1 : -1;
+      list.sort((a, b) => {
+        const pa = listed.get(a.id), pb = listed.get(b.id);
+        if (!pa || !pb) return (pa ? -1 : 0) + (pb ? 1 : 0) || a.id - b.id;
+        const x = BigInt(pa.price), y = BigInt(pb.price);
+        return (x < y ? -dir : x > y ? dir : 0) || a.id - b.id;
+      });
+    } else if (sort === 'work') list.sort((a, b) => b.extra - a.extra || (RARITY_ORDER[b.traits.Rarity] || 0) - (RARITY_ORDER[a.traits.Rarity] || 0) || a.id - b.id);
     return list;
   }
 
@@ -188,7 +205,9 @@
       const info = document.createElement('div');
       info.className = 'info';
       info.innerHTML = `<div class="name"><span>${esc(label(p))}</span>${rarityTag(p)}</div>`
-        + `<div class="sub">${esc(p.traits.Edition)} · ${esc(p.traits.Style)} · ${esc(who(p.owner))}</div>`;
+        + `<div class="sub">${esc(p.traits.Edition)} · ${esc(p.traits.Style)} · ${esc(who(p.owner))}</div>`
+        + (listed.has(p.id) ? `<div class="price">${esc(eth(listed.get(p.id).price))}</div>`
+          : p.lastSale ? `<div class="sub">Last sale ${esc(eth(p.lastSale.price))}</div>` : '');
       a.appendChild(info);
       return a;
     });
@@ -209,7 +228,8 @@
       const p = byId.get(a.id);
       const tr = document.createElement('tr');
       const addr = (x) => (x === ZERO ? '<span style="color:var(--muted)">–</span>' : `<a class="addr" href="${walletUrl(x)}">${esc(who(x))}</a>`);
-      tr.innerHTML = `<td><span class="ev ${a.kind}">${a.kind === 'mint' ? 'Minted' : 'Transfer'}</span></td>`
+      const evName = a.kind === 'mint' ? 'Minted' : a.kind === 'sale' ? `Sale · ${esc(eth(a.price))}${a.currency === 'WETH' ? ' WETH' : ''}` : 'Transfer';
+      tr.innerHTML = `<td><span class="ev ${a.kind}">${evName}</span></td>`
         + '<td class="itemcell"></td>'
         + `<td class="hide-sm">${addr(a.from)}</td><td>${addr(a.to)}</td>`
         + `<td class="num"><a href="${data.explorer}/tx/${a.tx}" target="_blank" rel="noopener" title="${new Date(a.time * 1000).toLocaleString()}">${ago(a.time)} ↗</a></td>`;
@@ -284,16 +304,35 @@
     prints = next.tokens.map((t) => {
       const old = cache.get(t.id);
       const art = old && old.seed === t.seed ? old.art : HP.render(t.seed, t.d);
-      const traits = { ...art.traits, Run: '' };
+      const traits = { Status: '', ...art.traits, Run: '' };
       const p = { ...t, art, traits };
       p.traits.Run = runOf(p);
       return p;
     });
+    applyMarket();
+  }
+
+  // Only listings whose seller still owns the print count (the API checks this too).
+  function applyMarket() {
+    listed = new Map();
+    const owners = new Map(prints.map((p) => [p.id, p.owner]));
+    for (const l of market.listings) if (same(owners.get(l.tokenId), l.seller)) listed.set(l.tokenId, l);
+    market.listings = market.listings.filter((l) => listed.get(l.tokenId) === l);
+    for (const p of prints) p.traits.Status = listed.has(p.id) ? 'Buy now' : 'Not listed';
+  }
+
+  async function loadMarket() {
+    const r = await fetch(`/api/market?c=${key}`, { cache: 'no-store' }).catch(() => null);
+    const body = r && r.ok ? await r.json().catch(() => null) : null;
+    return body && body.enabled ? body : { enabled: false, listings: [] };
   }
 
   async function refresh(first) {
     try {
-      const next = await load();
+      const [next, nextMarket] = await Promise.all([load(), loadMarket()]);
+      const marketChanged = JSON.stringify(nextMarket.listings.map((l) => l.orderHash)) !== JSON.stringify(market.listings.map((l) => l.orderHash)) || nextMarket.enabled !== market.enabled;
+      market = nextMarket;
+      if (data && marketChanged) applyMarket();
       $('error').classList.add('hidden');
       if (!next.deployed) {
         $('title').textContent = shape.name;
@@ -302,8 +341,9 @@
         return;
       }
       const changed = !data || next.block !== data.block || next.total !== data.total || next.activityTotal !== data.activityTotal;
-      if (!changed) return;
-      adopt(next);
+      if (!changed && !marketChanged) return;
+      if (changed) adopt(next);
+      $('sortPrice').hidden = $('sortPriceDesc').hidden = !market.enabled;
       if (first) {
         renderAll();
       } else {
