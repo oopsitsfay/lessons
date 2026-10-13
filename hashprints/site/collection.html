@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icon.png">
+<title>HashPrints Collection</title>
+<meta name="description" content="Every HashPrint minted so far: browse by trait, follow mints and transfers, see who holds what.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --ink-2: #4a463d; --muted: #7a7466; --rule: #d6cfbd; --accent: #ff48b0; --ok: #00835a; --bad: #c62828; --gold: #b38b14; --holo: #7b3fe4; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --gold: #ffd700; --holo: #b69cff; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --gold: #ffd700; --holo: #b69cff; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html { overflow-x: hidden; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 "Space Grotesk", system-ui, sans-serif; }
+  a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .mono { font-family: "JetBrains Mono", monospace; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+  .hidden { display: none !important; }
+
+  nav { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--paper) 90%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--rule); }
+  nav .wrap { display: flex; align-items: center; gap: 20px; height: 60px; }
+  .logo { font: 700 18px "JetBrains Mono", monospace; text-decoration: none; margin-right: auto; }
+  .logo span { color: var(--accent); }
+  nav .links a { text-decoration: none; font-size: 15px; color: var(--ink-2); }
+  nav .links a.on { color: var(--ink); font-weight: 700; }
+  nav .links { display: flex; gap: 20px; }
+  @media (max-width: 640px) { nav .links { display: none; } }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 13px "JetBrains Mono", monospace; padding: 10px 16px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .btn:hover { background: var(--accent); border-color: var(--accent); color: #000; }
+  .btn.sm { padding: 7px 12px; font-size: 12px; }
+
+  /* header */
+  .strip { display: grid; grid-template-columns: repeat(12, 1fr); height: 120px; overflow: hidden; border-bottom: 1px solid var(--rule); background: var(--paper-2); }
+  .strip canvas { width: 100%; height: 120px; object-fit: cover; image-rendering: pixelated; display: block; }
+  @media (max-width: 760px) { .strip { grid-template-columns: repeat(6, 1fr); height: 80px; } .strip canvas { height: 80px; } .strip canvas:nth-child(n+7) { display: none; } }
+  .head { display: flex; gap: 20px; align-items: flex-end; margin-top: -44px; flex-wrap: wrap; }
+  .avatar { width: 112px; height: 112px; border: 4px solid var(--paper); background: var(--paper-2); flex: none; }
+  .avatar canvas { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+  .avatar.addr { display: grid; place-items: center; font: 700 28px "JetBrains Mono", monospace; color: #000; }
+  .head .who { flex: 1; min-width: 220px; padding-bottom: 6px; }
+  h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.05; letter-spacing: -1px; margin: 0 0 6px; word-break: break-all; }
+  .meta { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; color: var(--muted); font: 13px "JetBrains Mono", monospace; }
+  .meta a { color: var(--ink-2); }
+  .head .actions { display: flex; gap: 8px; padding-bottom: 6px; flex-wrap: wrap; }
+  .badge { display: inline-flex; align-items: center; gap: 7px; font: 700 11px "JetBrains Mono", monospace; letter-spacing: 1px; text-transform: uppercase; padding: 4px 9px; border: 2px solid var(--rule); color: var(--muted); }
+  .badge i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .badge.live { border-color: var(--ok); color: var(--ok); }
+  .badge.live i { animation: pulse 1.6s infinite; }
+  .badge.off { border-color: var(--bad); color: var(--bad); }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .badge.live i { animation: none; } }
+  .desc { color: var(--ink-2); max-width: 720px; margin: 18px 0 0; }
+  .stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); border: 1px solid var(--rule); margin: 22px 0 0; }
+  .stats div { padding: 12px 14px; border-right: 1px solid var(--rule); min-width: 0; }
+  .stats div:last-child { border-right: 0; }
+  .stats b { display: block; font: 700 18px "JetBrains Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stats span { color: var(--muted); font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } .stats div:nth-child(3n) { border-right: 0; } .stats div:nth-child(-n+3) { border-bottom: 1px solid var(--rule); } }
+  .progress { height: 4px; background: var(--paper-2); margin-top: -1px; border: 1px solid var(--rule); border-top: 0; }
+  .progress span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s; }
+
+  /* tabs + toolbar */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin: 32px 0 0; overflow-x: auto; }
+  .tabs button { font: 700 14px "Space Grotesk", sans-serif; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: 12px 14px; cursor: pointer; white-space: nowrap; }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+  .tabs button em { font-style: normal; font: 12px "JetBrains Mono", monospace; color: var(--muted); margin-left: 4px; }
+  .toolbar { display: flex; gap: 8px; padding: 16px 0; position: sticky; top: 60px; z-index: 10; background: var(--paper); flex-wrap: wrap; }
+  .toolbar input, .toolbar select { font: 13px "JetBrains Mono", monospace; padding: 9px 12px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); min-width: 0; }
+  .toolbar input { flex: 1 1 200px; }
+  .toolbar input:focus, .toolbar select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+  .chip { font: 12px "JetBrains Mono", monospace; border: 1px solid var(--ink); padding: 4px 8px; background: transparent; color: var(--ink); cursor: pointer; }
+  .chip:hover { border-color: var(--accent); }
+  .chip.clear { border-color: transparent; color: var(--muted); text-decoration: underline; }
+
+  .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; align-items: start; }
+  .layout.nofilters { grid-template-columns: minmax(0, 1fr); }
+  .layout.nofilters .filters { display: none; }
+  .filters { position: sticky; top: 130px; max-height: calc(100vh - 150px); overflow: auto; border: 1px solid var(--rule); }
+  .filters details { border-bottom: 1px solid var(--rule); }
+  .filters details:last-child { border-bottom: 0; }
+  .filters summary { padding: 11px 14px; cursor: pointer; font-weight: 700; display: flex; justify-content: space-between; list-style: none; }
+  .filters summary::-webkit-details-marker { display: none; }
+  .filters summary::after { content: "+"; font-family: "JetBrains Mono", monospace; color: var(--muted); }
+  .filters details[open] summary::after { content: "–"; }
+  .filters label { display: flex; align-items: center; gap: 8px; padding: 5px 14px; font-size: 14px; cursor: pointer; }
+  .filters label:hover { background: var(--paper-2); }
+  .filters label span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .filters label em { font: 11px "JetBrains Mono", monospace; color: var(--muted); font-style: normal; }
+  .filters details > div { padding-bottom: 8px; }
+  .filters input { accent-color: var(--accent); }
+  .filters .head-row { display: none; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .filters { position: fixed; inset: 0; z-index: 50; max-height: none; background: var(--paper); border: 0; padding-bottom: 80px; }
+    .filters .head-row { display: flex; justify-content: space-between; align-items: center; padding: 14px; border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--paper); }
+    .layout:not(.showfilters) .filters { display: none; }
+  }
+
+  /* items */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+  @media (max-width: 420px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+  .card { display: block; text-decoration: none; border: 1px solid var(--rule); background: var(--paper-2); transition: transform .12s, border-color .12s; min-width: 0; }
+  .card:hover { transform: translateY(-2px); border-color: var(--ink); }
+  .card canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+  .card .info { padding: 9px 10px 10px; border-top: 1px solid var(--rule); background: var(--paper); }
+  .card .name { font-weight: 700; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+  .card .sub { color: var(--muted); font: 11px "JetBrains Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .tag { font: 700 10px "JetBrains Mono", monospace; letter-spacing: .5px; text-transform: uppercase; padding: 2px 6px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag.gold { color: var(--gold); }
+  .tag.holo { color: var(--holo); }
+  .tag.ap { color: var(--accent); }
+  .more { display: flex; justify-content: center; padding: 24px 0; }
+  .empty { border: 1px dashed var(--rule); padding: 40px 20px; text-align: center; color: var(--ink-2); }
+  .empty p { margin: 0 0 14px; }
+  .count { color: var(--muted); font: 12px "JetBrains Mono", monospace; margin: 0 0 12px; }
+
+  /* tables */
+  table.list { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.list th { text-align: left; color: var(--muted); font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; padding: 10px 8px; border-bottom: 1px solid var(--rule); font-weight: 400; }
+  table.list td { padding: 10px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  table.list .item { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; white-space: nowrap; }
+  table.list .item canvas { width: 40px; height: 40px; image-rendering: pixelated; border: 1px solid var(--rule); flex: none; }
+  table.list .addr { font: 13px "JetBrains Mono", monospace; }
+  table.list .num { text-align: right; font-family: "JetBrains Mono", monospace; white-space: nowrap; }
+  .ev { font: 700 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .5px; }
+  .ev.mint { color: var(--ok); }
+  .share { display: inline-block; width: 80px; height: 6px; background: var(--paper-2); vertical-align: middle; margin-left: 8px; }
+  .share span { display: block; height: 100%; background: var(--accent); }
+  @media (max-width: 640px) { table.list .hide-sm { display: none; } table.list td, table.list th { padding: 9px 4px; } }
+
+  .err { border-left: 4px solid var(--bad); padding: 12px 16px; background: var(--paper-2); margin: 24px 0; }
+  footer { border-top: 1px solid var(--rule); margin-top: 64px; padding: 24px 0 40px; color: var(--muted); font: 12px "JetBrains Mono", monospace; }
+  footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="logo" href="/">HASH<span>/</span>PRINTS</a>
+  <div class="links"><a href="/">About</a><a href="collection.html" class="on" id="navCollection">Collection</a><a href="mint.html" id="navMint">Mint</a></div>
+  <button class="btn sm ghost" id="walletBtn" type="button">My prints</button>
+</div></nav>
+
+<div class="strip" id="strip" aria-hidden="true"></div>
+<main class="wrap">
+  <div class="head">
+    <div class="avatar" id="avatar"></div>
+    <div class="who">
+      <h1 id="title">HashPrints</h1>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="actions" id="actions"></div>
+  </div>
+  <p class="desc" id="desc">3,333 pixel prints made by proof of work. Each one is drawn from the hash its minter found in their browser. Extra work makes a print rarer, never cheaper.</p>
+  <div class="stats" id="stats"></div>
+  <div class="progress" id="progressWrap"><span id="progress"></span></div>
+
+  <div class="tabs" role="tablist" id="tabs">
+    <button type="button" data-tab="items" class="on">Items <em id="nItems"></em></button>
+    <button type="button" data-tab="activity">Activity <em id="nActivity"></em></button>
+    <button type="button" data-tab="holders" id="holdersTab">Holders <em id="nHolders"></em></button>
+  </div>
+
+  <div id="error" class="err hidden"></div>
+
+  <section id="tab-items">
+    <div class="toolbar">
+      <button class="btn sm ghost" id="filterBtn" type="button">Filters</button>
+      <input id="search" type="search" placeholder="Search by number, e.g. 42" autocomplete="off" aria-label="Search by number">
+      <select id="sort" aria-label="Sort">
+        <option value="new">Newest</option>
+        <option value="old">Oldest</option>
+        <option value="id">Number</option>
+        <option value="work">Most work</option>
+      </select>
+    </div>
+    <div class="layout" id="layout">
+      <aside class="filters" id="filters">
+        <div class="head-row"><b>Filters</b><button class="btn sm" id="filtersDone" type="button">Show results</button></div>
+        <div id="filterGroups"></div>
+      </aside>
+      <div>
+        <div class="chips" id="chips"></div>
+        <div class="count" id="count"></div>
+        <div class="grid" id="grid"></div>
+        <div class="more"><button class="btn ghost hidden" id="moreBtn" type="button">Show more</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-activity" class="hidden">
+    <table class="list"><thead><tr><th>Event</th><th>Print</th><th class="hide-sm">From</th><th>To</th><th class="num">When</th></tr></thead><tbody id="activity"></tbody></table>
+  </section>
+
+  <section id="tab-holders" class="hidden">
+    <table class="list"><thead><tr><th class="num" style="width:48px">#</th><th>Wallet</th><th class="num">Prints</th><th class="num hide-sm">Share</th></tr></thead><tbody id="holders"></tbody></table>
+  </section>
+</main>
+<footer><div class="wrap"><span id="foot">Read from the chain.</span><span><a href="/">About HashPrints</a> · <a href="mint.html" id="footMint">Mint</a></span></div></footer>
+
+<script src="wallet.js"></script>
+<script src="hashprints.js"></script>
+<script src="collection.js"></script>
+</body>
+</html>

@@ -12,6 +12,7 @@
   const q = new URLSearchParams(location.search);
   const key = q.get('c') === 'test' ? 'test' : 'main';
   const shape = HP.COLLECTIONS[key];
+  if (key === 'test') document.getElementById('navCollection').href = 'collection.html?c=test';
 
   let artifact, address, chainId, chain, reader, readContract;
   let browser, signer, account, walletChain, wallet1193;
@@ -202,7 +203,7 @@
         ['Style', art.traits.Style],
         ['Edition', art.traits.Edition],
         ['Transaction', txLink(receipt.hash)],
-        ['Page', `<a href="${page}" target="_blank" rel="noopener">View print</a>`],
+        ['Page', `<a href="${page}" target="_blank" rel="noopener">View print</a> · <a href="collection.html?${key === 'test' ? 'c=test&' : ''}owner=${account}">Your prints</a>`],
       ].map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('');
       $('result').classList.remove('hidden');
       say(`Minted ${shape.name} #${id}.`);
