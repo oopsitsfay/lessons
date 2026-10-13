@@ -44,25 +44,9 @@
     return e?.shortMessage || e?.reason || e?.message || String(e);
   }
 
-  // Sends a transaction straight through the wallet's eth_sendTransaction with plain hex fields and
-  // an explicit gas limit. Mobile wallets handle this more reliably than ethers' signer wrapper.
+  // Hands the transaction straight to the wallet (eth_sendTransaction). No gas field: the wallet decides gas.
   async function sendTx({ to, data, value = 0n }) {
-    const v = BigInt(value || 0);
-    let gas;
-    try {
-      gas = await provider.estimateGas({ from: account, ...(to ? { to } : {}), data, value: v });
-    } catch (e) {
-      throw new Error(`The network rejected this transaction: ${errMsg(e)}`);
-    }
-    gas = (gas * 12n) / 10n; // 20% headroom
-    const fee = await provider.getFeeData();
-    const perGas = fee.maxFeePerGas ?? fee.gasPrice ?? 0n;
-    const need = gas * perGas + v;
-    const have = await provider.getBalance(account);
-    if (have < need) {
-      throw new Error(`Not enough ETH in ${short(account)}. This needs up to ${ethers.formatEther(need).slice(0, 9)} ETH (gas${v ? ' + payment' : ''}); the wallet has ${ethers.formatEther(have).slice(0, 9)} ETH.`);
-    }
-    const tx = { from: account, data, gas: ethers.toQuantity(gas), value: ethers.toQuantity(v) };
+    const tx = { from: account, data, value: ethers.toQuantity(BigInt(value || 0)) };
     if (to) tx.to = to;
     const hash = await wallet1193.request({ method: 'eth_sendTransaction', params: [tx] });
     log(`sent ${txLink(hash)}`);
@@ -135,33 +119,11 @@
     ];
   }
 
-  async function estimate() {
-    if (!signer) { notify('Connect a wallet first.', 'error'); return null; }
-    try {
-      const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
-      const tx = await factory.getDeployTransaction(...ctorArgs());
-      const gas = await provider.estimateGas({ ...tx, from: account });
-      const fee = await provider.getFeeData();
-      const perGas = fee.maxFeePerGas ?? fee.gasPrice;
-      const cost = gas * perGas;
-      const text = `Deploy ≈ ${gas.toLocaleString()} gas × ${ethers.formatUnits(perGas, 'gwei').slice(0, 6)} gwei ≈ ${ethers.formatEther(cost).slice(0, 9)} ETH (max) on ${chain().name}`;
-      $('deployStatus').textContent = text;
-      return { text, cost };
-    } catch (e) {
-      $('deployStatus').textContent = `Estimate failed: ${errMsg(e)}`;
-      return null;
-    }
-  }
-
   async function deploy() {
     if (!signer) return notify('Connect a wallet first.', 'error');
     if (!CHAINS[chainId]) return notify('Switch your wallet to Ethereum mainnet first.', 'error');
     let args;
     try { args = ctorArgs(); } catch (e) { return notify(`Check the deploy fields: ${errMsg(e)}`, 'error'); }
-    const est = await estimate();
-    const total = Number(args[4] * args[5] + args[6]);
-    const ok = confirm(`Deploy "${args[0]}" (${args[1]}) with ${total} tokens at ${ethers.formatEther(args[2])} ETH each on ${chain().name}?\n\n${est ? est.text : 'Gas estimate unavailable.'}\n\nYour wallet will ask you to confirm.`);
-    if (!ok) return;
     try {
       const factory = new ethers.ContractFactory(artifact.abi, artifact.bytecode, signer);
       notify('Deploy: confirm in your wallet…');
@@ -367,7 +329,6 @@
   $('signOutBtn').onclick = () => fetch('/api/admin/logout', { method: 'POST', credentials: 'same-origin' }).finally(() => { location.href = '/admin-login.html'; });
   $('connectBtn').onclick = () => connect().catch((e) => notify(HPWallet.friendly(e), 'error'));
   $('preset').onchange = fillPreset;
-  $('estimateBtn').onclick = estimate;
   $('deployBtn').onclick = deploy;
   $('loadBtn').onclick = () => loadContract($('loadAddr').value.trim());
   $('refreshBtn').onclick = (e) => { e.preventDefault(); refreshStatus(); loadTokens(); };

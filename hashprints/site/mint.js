@@ -183,16 +183,10 @@
       if (!found) { say('Search stopped.'); return; }
       say(`Found a ${found.bits}-bit hash. Confirm the mint in your wallet: ${ethers.formatEther(status.price)} ETH + gas.`);
       const c = new ethers.Contract(address, artifact.abi, signer);
-      // Sent straight through the wallet with plain hex fields and a gas limit: mobile wallets
-      // handle this more reliably than ethers' signer wrapper.
+      // Handed straight to the wallet; the wallet decides gas.
       const req = await c.press.populateTransaction(found.nonce, { value: status.price });
-      const gas = ((await browser.estimateGas({ from: account, to: address, data: req.data, value: status.price })) * 12n) / 10n;
-      const fee = await browser.getFeeData();
-      const need = gas * (fee.maxFeePerGas ?? fee.gasPrice ?? 0n) + status.price;
-      const have = await browser.getBalance(account);
-      if (have < need) throw new Error(`Not enough ETH. Minting needs up to ${ethers.formatEther(need).slice(0, 9)} ETH (price + gas); this wallet has ${ethers.formatEther(have).slice(0, 9)} ETH.`);
       const hash = await wallet1193.request({ method: 'eth_sendTransaction', params: [{
-        from: account, to: address, data: req.data, value: ethers.toQuantity(status.price), gas: ethers.toQuantity(gas),
+        from: account, to: address, data: req.data, value: ethers.toQuantity(status.price),
       }] });
       say('Transaction sent. Waiting for confirmation…');
       const receipt = await browser.waitForTransaction(hash);
