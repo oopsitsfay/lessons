@@ -47,15 +47,31 @@
   }
 
   // Hands the transaction straight to the wallet (eth_sendTransaction). No gas field: the wallet decides gas.
-  async function sendTx({ to, data, value = 0n }) {
+  async function sendTx({ to, data, value = 0n, gas }) {
     const tx = { from: account, data, value: ethers.toQuantity(BigInt(value || 0)) };
     if (to) tx.to = to;
+    if (gas) tx.gas = ethers.toQuantity(gas);
     const hash = await wallet1193.request({ method: 'eth_sendTransaction', params: [tx] });
     log(`sent ${txLink(hash)}`);
     HPWallet.toast('Sent. Waiting for confirmation…');
     const receipt = await provider.waitForTransaction(hash);
     if (!receipt || receipt.status !== 1) throw new Error(`Transaction failed on-chain: ${txLink(hash)}`);
     return receipt;
+  }
+
+  // Deploys are the one case where the page sets the gas limit: some networks (e.g. Sepolia's newer
+  // gas rules, ~16.4M for this contract vs ~2.4M on mainnet) need more than wallets pick by default,
+  // and a short limit fails the deploy. Uses the network's own figure plus a small margin, capped at
+  // the protocol's per-transaction maximum. The wallet still sets the gas price.
+  const TX_GAS_CAP = 16777216n;
+  async function deployGasLimit(req) {
+    try {
+      const needed = await provider.estimateGas({ from: account, ...req });
+      const withMargin = needed + needed / 50n + 50000n; // +2% + 50k
+      return withMargin > TX_GAS_CAP ? (needed <= TX_GAS_CAP ? TX_GAS_CAP : undefined) : withMargin;
+    } catch {
+      return undefined; // let the wallet decide if the network can't say
+    }
   }
 
   async function send(label, makeTx) {
@@ -150,10 +166,11 @@
         // Works in wallets that can't send contract-creation transactions (e.g. Zerion).
         const salt = ethers.hexlify(crypto.getRandomValues(new Uint8Array(32)));
         address = ethers.getCreate2Address(CREATE2_DEPLOYER, salt, ethers.keccak256(initcode)).toLowerCase();
-        receipt = await sendTx({ to: CREATE2_DEPLOYER, data: ethers.concat([salt, initcode]) });
+        const deployData = ethers.concat([salt, initcode]);
+        receipt = await sendTx({ to: CREATE2_DEPLOYER, data: deployData, gas: await deployGasLimit({ to: CREATE2_DEPLOYER, data: deployData }) });
         if ((await provider.getCode(address)) === '0x') throw new Error('The deploy transaction confirmed but no contract was created.');
       } else {
-        receipt = await sendTx({ data: initcode });
+        receipt = await sendTx({ data: initcode, gas: await deployGasLimit({ data: initcode }) });
         address = receipt.contractAddress.toLowerCase();
       }
       notify(`Deployed ${args[0]} at ${short(address)} ✓`); log(`Deploy: ${args[0]} at ${address} (block ${receipt.blockNumber}, ${receipt.gasUsed.toLocaleString()} gas)`);
