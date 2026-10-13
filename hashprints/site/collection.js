@@ -345,6 +345,10 @@
     const close = () => { panel.classList.add('hidden'); panel.replaceChildren(); };
     const form = HPTrade.priceForm(market, {
       mode: 'offer', submitLabel: 'Make collection offer', onBack: close,
+      presets: [
+        { label: 'Top offer', wei: market.offers.find((o) => o.tokenId === null)?.price ?? null },
+        { label: 'Floor', wei: market.listings[0]?.price ?? null },
+      ],
       note: 'Any owner can accept it with any print. Paid in WETH (wrapped ETH); if you don\'t have enough, your wallet wraps the difference first. Signing is free.',
       onSubmit: async ({ wei, days }) => {
         form.setBusy(true);

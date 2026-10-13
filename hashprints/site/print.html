@@ -58,6 +58,9 @@
   .trade .msg.bad { color: #c62828; }
   .trade .msg.good { color: #00835a; }
   .trade .split div { display: flex; justify-content: space-between; }
+  .trade .presets, .panel .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .trade button.preset, .panel button.preset { font: 12px "JetBrains Mono", monospace; padding: 6px 10px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; flex: 0 0 auto; }
+  .trade button.preset:hover, .panel button.preset:hover { background: var(--accent); border-color: var(--accent); color: #000; }
   .trade .note { font-size: 13px; color: var(--muted); line-height: 1.5; }
   .trade form label { margin-top: 2px; }
   #offers { margin: 0 0 24px; }
@@ -231,6 +234,16 @@
         return b;
       };
 
+      // Cheapest live listing of any other print, and the best offer this print could take.
+      function floorOther() {
+        const l = market.listings.find((x) => x.tokenId !== token.id);
+        return l ? l.price : null;
+      }
+      function topOffer() {
+        const o = market.offers.find((x) => x.tokenId === token.id || x.tokenId === null);
+        return o ? o.price : null;
+      }
+
       function listingNow() {
         return market.listings.find((l) => l.tokenId === token.id && same(l.maker, owner)) || null;
       }
@@ -256,6 +269,11 @@
             submitLabel: reprice ? 'Cancel old listing and relist' : 'List for sale',
             initial: reprice ? (Number(BigInt(listing.price)) / 1e18).toString() : '',
             note: reprice ? 'Changing the price cancels the current listing on chain (one small transaction), then you sign the new one.' : null,
+            presets: [
+              { label: 'Floor', wei: floorOther() },
+              { label: 'Top offer', wei: topOffer() },
+              { label: 'Last sale', wei: token.lastSale && token.lastSale.currency !== 'token' ? token.lastSale.price : null },
+            ],
             onBack: () => { mode = null; render(); },
             onSubmit: ({ wei, days }) => act(async (st) => {
               if (reprice) { await HPTrade.cancel(market, listing, (t) => st(`Cancelling the old listing: ${t}`)); }
@@ -265,6 +283,7 @@
         } else if (mode === 'offer') {
           kids.push(HPTrade.priceForm(market, {
             mode: 'offer', submitLabel: 'Make offer',
+            presets: [{ label: 'Top offer', wei: topOffer() }, { label: 'Floor', wei: floorOther() }],
             note: 'Offers are paid in WETH (wrapped ETH, always worth 1 ETH). If you don\'t have enough, your wallet will first wrap the difference. Signing the offer is free.',
             onBack: () => { mode = null; render(); },
             onSubmit: ({ wei, days }) => act((st) => HPTrade.offer(market, { tokenId: token.id, amountWei: wei, days, onStatus: st }), async () => { await refresh(); mode = null; say('Offer made. The owner can accept it any time before it ends.', 'good'); }),

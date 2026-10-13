@@ -166,7 +166,8 @@
   };
 
   // Price + duration form with a live fee breakdown. mode: 'list' | 'offer'.
-  function priceForm(market, { mode, submitLabel, initial, onSubmit, onBack, note }) {
+  // presets: [{ label, wei }] shown as one-tap buttons above the field (e.g. Floor, Top offer).
+  function priceForm(market, { mode, submitLabel, initial, onSubmit, onBack, note, presets = [] }) {
     const unit = mode === 'offer' ? 'WETH' : 'ETH';
     const price = el('input', { type: 'text', inputmode: 'decimal', placeholder: '0.01', 'aria-label': `Amount in ${unit}`, autocomplete: 'off' });
     if (initial) price.value = initial;
@@ -198,7 +199,15 @@
     };
     price.oninput = update;
     update();
+    const toEth = (wei) => ethers.formatEther(wei).replace(/\.0$/, '');
+    const quick = presets.filter((p) => p && p.wei !== null && p.wei !== undefined && BigInt(p.wei) > 0n);
+    const chips = quick.length ? el('div', { class: 'presets' }, ...quick.map((p) => el('button', {
+      type: 'button',
+      class: 'preset',
+      onclick: () => { price.value = toEth(BigInt(p.wei)); update(); price.focus(); },
+    }, `${p.label} · ${eth(p.wei, unit)}`))) : null;
     const form = el('form', { onsubmit: (e) => { e.preventDefault(); const wei = parse(); if (wei) onSubmit({ wei, days: Number(days.value) }); } },
+      chips,
       el('div', { class: 'two' }, el('label', {}, `${mode === 'offer' ? 'Offer' : 'Price'} (${unit})`, price), el('label', {}, mode === 'offer' ? 'Offer lasts' : 'Listed for', days)),
       split,
       note ? el('div', { class: 'note' }, note) : null,
