@@ -54,11 +54,13 @@ Both actionable suggestions were applied: an event on `setPrice`, and a zero-add
 
 The market adds no contract. Trades settle on Seaport 1.6, and the site's part is limited to storing signed orders and building transactions in the browser.
 
-- **What a seller signs:** one HashPrint for a fixed ETH amount paid to the seller (plus the configured royalty), no zone, no conduit, a set end date (at most 180 days). The page shows the split before signing.
-- **What the API accepts:** `api/market.js` rejects any order that doesn't have exactly that shape, then checks on chain that the seller owns the print, has approved Seaport, the order isn't cancelled or filled, the counter matches, and Seaport itself accepts the signature (read-only `validate`). Someone else's signature, a changed price or a missing royalty are refused (covered by `scripts/market-e2e.js`).
-- **What the store can't do:** a stored order can only ever be filled on the seller's terms. Deleting or altering the Blob store can hide listings but can't move a print or redirect a payment, because Seaport checks the signed order.
-- **Cancelling:** removing a listing from the site isn't enough, since anyone who saw the signed order can still fill it. Cancel is always an on-chain `cancel` on Seaport, and the pages only offer that.
-- **Approval:** `setApprovalForAll(Seaport)` lets Seaport move a seller's HashPrints only when one of their own signed orders is filled. It's the same approval OpenSea asks for.
+- **What people sign:** a seller signs "one HashPrint for X ETH, minus the 8% creator fee"; a buyer signs "X WETH for this print (or any print), with the 8% creator fee paid out of it". No zone, no conduit, a set end date (at most 180 days). The page shows the full split before anything is signed.
+- **What the API accepts:** `api/market.js` rejects any order that doesn't have exactly that shape and those fees, then checks on chain (ownership or WETH balance and approval, counter, not cancelled or filled) and lets Seaport check the signature with a read-only `validate`. Someone else's signature, a changed price, a missing or smaller fee and offers in other tokens are refused (covered by `scripts/market-e2e.js`).
+- **Accepting offers:** the owner's side is an order built in their own browser and sent by them, so Seaport doesn't need a signature for it. It asks for exactly the offer minus its fee items, so the match only goes through if every amount lines up.
+- **What the store can't do:** a stored order can only ever be filled on its signer's terms. Deleting or altering the Blob store can hide orders but can't move a print or redirect a payment, because Seaport checks every signed field.
+- **Cancelling:** removing an order from the site isn't enough, since anyone who saw it can still fill it. Cancel is always on chain (`cancel` for one order, `incrementCounter` for all of a wallet's orders), and the pages only offer that. "Change price" cancels the old listing first.
+- **Approvals:** `setApprovalForAll(Seaport)` and WETH `approve(Seaport)` let Seaport move a wallet's prints or WETH only when one of that wallet's own signed orders is filled. They're the same approvals OpenSea asks for.
+- **Abuse limits:** request bodies are capped at 20 KB, and a wallet can hold at most 25 open offers per collection.
 
 ## Before mainnet
 

@@ -11,7 +11,9 @@
     "fromBlock": 11902679
   },
   "market": {
-    "royaltyBps": 0,
-    "royaltyRecipient": ""
+    "creatorFeeBps": 800,
+    "creatorFeeRecipient": "0x7C50Da6ae50697AeB5Da2113560b88255fA7AF79",
+    "marketFeeBps": 0,
+    "marketFeeRecipient": ""
   }
 }

@@ -67,16 +67,35 @@ Owner-only actions are enforced by the contract. The page itself holds no keys.
 
 ## Buying and selling
 
-Prints can be listed and bought on the site itself (print pages and the collection page). It runs on **Seaport 1.6** (`0x0000000000000068F116a894984e2DB1123eB395`), the same open exchange contract OpenSea uses, so there is no marketplace contract of our own and the site never holds anyone's money.
+Prints are bought, sold and offered on directly from the site (print pages, the collection page and wallet pages). Trades settle on **Seaport 1.6** (`0x0000000000000068F116a894984e2DB1123eB395`, same address on Ethereum and Sepolia), the open exchange contract OpenSea also uses. There is no marketplace contract of our own and the site never holds anyone's money: every payment goes from buyer to seller (and to the fee wallets) inside one Seaport transaction.
 
-- **List:** the owner approves Seaport once (`setApprovalForAll`), then signs a fixed-price order for free. `POST /api/market` checks it against the chain (owner, approval, counter, not cancelled or filled, and Seaport's own signature check via a read-only `validate` call) and stores it.
-- **Buy:** the buyer calls `fulfillOrder` on Seaport with the ETH. Seaport moves the print and pays the seller (and the creator royalty, if set) in the same transaction.
-- **Cancel:** the seller calls `cancel` on Seaport. Listings that are sold, cancelled, expired or whose print moved are dropped automatically.
-- **Royalty:** `market.royaltyBps` (250 = 2.5%) and `market.royaltyRecipient` in `site/mint-config.json`. Listings made on this site must include it. No marketplace fee.
-- **Storage:** signed listings live in a Vercel Blob store (one JSON file per token). Create a **public** Blob store in the Vercel dashboard and connect it to the project; that adds `BLOB_READ_WRITE_TOKEN`. Without it the market is switched off and the pages hide the buy and sell buttons.
-- Sales made anywhere through Seaport (including OpenSea) show up in Activity with their price, and in the volume.
+| | How |
+|---|---|
+| List | Owner approves Seaport once (`setApprovalForAll`), then signs a fixed-price order for free. 1–180 days. |
+| Change price | Cancels the old listing on chain, then signs the new one, so the old price can't be filled. |
+| Buy | `fulfillOrder` on Seaport with the ETH. |
+| Offer on a print | Buyer signs a WETH offer for free. The page wraps ETH into WETH and approves WETH for Seaport first if needed. |
+| Collection offer | Same, for any print. Any owner can accept it with any of their prints. |
+| Accept an offer | The owner sends one `matchAdvancedOrders` transaction: their own order (the print for the offer minus fees) matched against the buyer's signed offer. The owner is paid in WETH. |
+| Cancel | `cancel` on Seaport for one order; "Cancel all" on your wallet page calls `incrementCounter`, which voids every order that wallet has signed. |
+| Transfer | Send a print to another wallet from its page. |
+| Unwrap | Turn WETH back into ETH from your wallet page. |
 
-`npm run test:market` (with `npx hardhat node` running) deploys real Seaport 1.6 code (`test/fixtures/seaport-1.6.json`, rebuilt by `scripts/build-seaport-fixture.js`) and runs list, buy, cancel and the listings the API must refuse.
+**Fees** (`market` in `site/mint-config.json`), taken out of the price, paid by Seaport in the same transaction:
+
+- `creatorFeeBps: 800`: **8% creator fee** to `creatorFeeRecipient` (the admin wallet) on every listing and offer. The API refuses any order without exactly this fee.
+- `marketFeeBps` / `marketFeeRecipient`: optional marketplace fee, off (0).
+- Seaport charges nothing. Gas is paid by whoever sends a transaction (buyer, or the owner accepting an offer).
+
+The 8% is enforced for trades made through this site. The HashPrints contract has no on-chain royalty enforcement (it can't be added after deployment), so other marketplaces decide their own creator fee; set it in each marketplace's collection settings.
+
+**Checks.** `POST /api/market` stores an order only if it has exactly the site's shape and fees, the signer's Seaport counter matches, it isn't cancelled or filled, Seaport itself accepts the signature (read-only `validate`), and for listings the seller owns the print and has approved Seaport, for offers the buyer holds and has approved enough WETH. `GET` re-checks all of that every time: sold, cancelled, expired or moved orders are deleted; offers whose buyer is short of WETH are hidden until they're funded again. A wallet can have at most 25 open offers per collection.
+
+**Storage.** Signed orders live in a Vercel Blob store (one JSON file per order). Create a **public** Blob store in the Vercel dashboard and connect it to the project; that adds `BLOB_READ_WRITE_TOKEN`. Without it the market is off and the pages hide the trading buttons.
+
+Sales made anywhere through Seaport (including OpenSea, and accepted WETH offers) show up in Activity with their price and count toward volume.
+
+`npm run test:market` (with `npx hardhat node` running) deploys real Seaport 1.6 code (`test/fixtures/seaport-1.6.json`, rebuilt by `scripts/build-seaport-fixture.js`) and a test WETH, then runs listing, buying, offers, collection offers, cancel, cancel-all, the fee payouts to the wei, and every order the API must refuse.
 
 ## WalletConnect
 

@@ -19,7 +19,7 @@
   let market = { enabled: false, listings: [] };
   let listed = new Map(); // token id -> live listing
   let prints = []; // tokens + rendered art, in token order
-  let tab = ['items', 'activity', 'holders'].includes(q.get('tab')) ? q.get('tab') : 'items';
+  let tab = ['items', 'activity', 'offers', 'holders'].includes(q.get('tab')) ? q.get('tab') : 'items';
   let shown = PAGE;
   let account = null;
   const picked = new Map(); // trait -> Set(values)
@@ -34,9 +34,9 @@
   const printUrl = (t) => withC(`print.html?id=${t.id}&seed=${t.seed}&d=${t.d}`);
   const walletUrl = (a) => withC(`collection.html?owner=${a}`);
   const who = (a) => (same(a, account) ? 'you' : short(a));
-  const eth = (wei) => {
+  const eth = (wei, unit = 'ETH') => {
     const n = Number(BigInt(wei)) / 1e18;
-    return `${n.toLocaleString('en-US', { maximumFractionDigits: 6 })} ETH`;
+    return `${n.toLocaleString('en-US', { maximumFractionDigits: 6 })} ${unit}`;
   };
 
   function ago(sec) {
@@ -89,6 +89,7 @@
       document.title = `${short(ownerParam)} · ${shape.name}`;
       $('meta').innerHTML = `<span>${esc(ownerParam)}</span><a href="${explorer}/address/${esc(ownerParam)}" target="_blank" rel="noopener">Etherscan ↗</a>`;
       $('actions').innerHTML = `<a class="btn ghost" href="${withC('collection.html')}">All prints</a>`;
+      renderWalletTools();
       $('desc').classList.add('hidden');
       const minted = prints.filter((p) => same(p.minter, owner)).length;
       const rare = mine.filter((p) => p.traits.Rarity !== 'Common').length;
@@ -105,14 +106,16 @@
     const status = data.total >= data.max ? '<span class="badge">Sold out</span>'
       : data.live ? '<span class="badge live"><i></i>Minting now</span>' : '<span class="badge off"><i></i>Not live</span>';
     $('meta').innerHTML = `${status}<a href="${explorer}/address/${data.address}#code" target="_blank" rel="noopener">${short(data.address)} ↗</a><span>${data.chainId === 1 ? 'Ethereum' : 'Sepolia'}</span>`;
-    $('actions').innerHTML = `<a class="btn" href="${withC('mint.html')}">Mint</a>`;
+    $('actions').innerHTML = `${market.enabled ? '<button class="btn ghost" type="button" id="offerBtn">Make collection offer</button>' : ''}<a class="btn" href="${withC('mint.html')}">Mint · ${esc(eth(data.price))}</a>`;
+    if (market.enabled) $('offerBtn').onclick = openCollectionOffer;
     const holders = new Set(prints.map((p) => p.owner.toLowerCase())).size;
     const rare = prints.filter((p) => p.traits.Rarity !== 'Common').length;
     const minted = stat(`${data.total.toLocaleString()}<small style="color:var(--muted);font-weight:400"> / ${data.max.toLocaleString()}</small>`, 'Minted', true);
     if (market.enabled) {
       const floor = market.listings.length ? eth(market.listings[0].price) : '–';
-      $('stats').innerHTML = minted + stat(holders, 'Holders') + stat(floor, 'Floor') + stat(market.listings.length, 'Listed')
-        + stat(data.volume && data.volume !== '0' ? eth(data.volume) : '0 ETH', `Volume · ${data.sales || 0} sales`) + stat(eth(data.price), 'Mint price');
+      const top = market.offers.find((o) => o.tokenId === null);
+      $('stats').innerHTML = minted + stat(floor, 'Floor') + stat(top ? eth(top.price, 'WETH') : '–', 'Top offer') + stat(market.listings.length, 'Listed')
+        + stat(data.volume && data.volume !== '0' ? eth(data.volume) : '0 ETH', `Volume · ${data.sales || 0} sale${data.sales === 1 ? '' : 's'}`) + stat(holders, 'Holders');
     } else {
       $('stats').innerHTML = minted + stat(holders, 'Holders') + stat(eth(data.price), 'Mint price')
         + stat(data.live ? `${data.run + 1} / ${data.runs}` : '–', 'Run') + stat(`${data.difficulty} bits`, 'Difficulty') + stat(rare, 'Gold / Holo');
@@ -267,7 +270,137 @@
       + `<td class="num">${n}</td><td class="num hide-sm">${((n / total) * 100).toFixed(1)}%<span class="share"><span style="width:${(n / list[0][1]) * 100}%"></span></span></td></tr>`).join('');
   }
 
+  // ------------------------------------------------------------ offers + wallet tools
+  function renderOffers() {
+    const byId = new Map(prints.map((p) => [p.id, p]));
+    const rows = market.offers.filter((o) => !owner || same(o.maker, owner) || (o.tokenId !== null && same(byId.get(o.tokenId)?.owner, owner)));
+    $('offersNote').textContent = market.enabled
+      ? `Offers are paid in WETH and include ${market.fees.map((f) => `the ${f.bps / 100}% ${f.label.toLowerCase()}`).join(' and ') || 'no fees'}. Owners accept them from the print's page; a collection offer can be accepted with any print.`
+      : '';
+    const body = $('offersBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="5"><div class="empty" style="margin:16px 0">No offers yet.</div></td></tr>';
+      return;
+    }
+    body.replaceChildren(...rows.map((o) => {
+      const p = o.tokenId === null ? null : byId.get(o.tokenId);
+      const tr = document.createElement('tr');
+      const cell = document.createElement('td');
+      if (p) {
+        const a = document.createElement('a');
+        a.className = 'item';
+        a.href = printUrl(p);
+        a.append(thumb(p), label(p));
+        cell.appendChild(a);
+      } else {
+        cell.innerHTML = '<b>Any print</b><div class="count" style="margin:0">collection offer</div>';
+      }
+      tr.appendChild(cell);
+      tr.insertAdjacentHTML('beforeend', `<td class="num"><b>${esc(eth(o.price, 'WETH'))}</b></td><td class="hide-sm"><a class="addr" href="${walletUrl(o.maker)}">${esc(who(o.maker))}</a></td>`
+        + `<td class="num hide-sm">${new Date(o.endTime * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</td><td class="num"></td>`);
+      const act = tr.lastElementChild;
+      if (same(o.maker, account)) {
+        const b = document.createElement('button');
+        b.className = 'act';
+        b.type = 'button';
+        b.textContent = 'Cancel';
+        b.onclick = () => runTx(b, (st) => HPTrade.cancel(market, o, st), 'Offer cancelled.');
+        act.appendChild(b);
+      } else if (p && same(p.owner, account)) {
+        act.innerHTML = `<a class="act" href="${printUrl(p)}">Review</a>`;
+      }
+      return tr;
+    }));
+  }
+
+  // Run a wallet action from a small button, showing progress in a toast.
+  async function runTx(button, fn, done) {
+    button.disabled = true;
+    try {
+      await fn((t) => HPWallet.toast(t));
+      HPWallet.toast(done);
+      market = await loadMarket();
+      applyMarket();
+      renderHeader();
+      renderItems();
+      renderTab();
+    } catch (e) {
+      HPWallet.toast(HPTrade.friendly(e), 'error');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function needWallet() {
+    if (HPTrade.wallet && HPTrade.wallet.chainId === data.chainId) return true;
+    const w = await HPTrade.connect(data.chainId, false);
+    if (w) setAccount(w.address);
+    return !!w;
+  }
+
+  async function openCollectionOffer() {
+    if (!(await needWallet())) return;
+    const panel = $('panel');
+    const msg = HPTrade.el('div', { class: 'msg', role: 'status' });
+    const close = () => { panel.classList.add('hidden'); panel.replaceChildren(); };
+    const form = HPTrade.priceForm(market, {
+      mode: 'offer', submitLabel: 'Make collection offer', onBack: close,
+      note: 'Any owner can accept it with any print. Paid in WETH (wrapped ETH); if you don\'t have enough, your wallet wraps the difference first. Signing is free.',
+      onSubmit: async ({ wei, days }) => {
+        form.setBusy(true);
+        try {
+          await HPTrade.offer(market, { tokenId: null, amountWei: wei, days, onStatus: (t) => { msg.textContent = t; msg.className = 'msg'; } });
+          msg.textContent = 'Collection offer made.';
+          msg.className = 'msg good';
+          market = await loadMarket();
+          applyMarket();
+          renderHeader();
+          renderCounts();
+          if (tab === 'offers') renderOffers();
+          setTimeout(close, 2500);
+        } catch (e) {
+          msg.textContent = HPTrade.friendly(e);
+          msg.className = 'msg bad';
+        } finally {
+          form.setBusy(false);
+        }
+      },
+    });
+    panel.replaceChildren(HPTrade.el('h3', {}, 'Make a collection offer'), HPTrade.el('p', {}, `An offer for any ${shape.name} print.`), form, msg);
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // On your own wallet page: WETH balance with unwrap, and cancel every open order at once.
+  async function renderWalletTools() {
+    const panel = $('panel');
+    if (!market.enabled || !owner || !same(owner, account) || !HPTrade.wallet || HPTrade.wallet.chainId !== data.chainId) {
+      panel.classList.add('hidden');
+      return;
+    }
+    const { el } = HPTrade;
+    let balance = 0n;
+    try { balance = await HPTrade.wethBalance(market); } catch {}
+    const mineOpen = market.listings.filter((l) => same(l.maker, account)).length + market.offers.filter((o) => same(o.maker, account)).length;
+    const unwrap = el('button', { type: 'button' }, 'Unwrap to ETH');
+    unwrap.disabled = balance === 0n;
+    unwrap.onclick = () => runTx(unwrap, (st) => HPTrade.unwrap(market, balance, st), 'Unwrapped.').then(renderWalletTools);
+    const cancelAll = el('button', { type: 'button' }, 'Cancel all');
+    cancelAll.disabled = mineOpen === 0;
+    cancelAll.onclick = () => {
+      if (!confirm('Cancel every listing and offer this wallet has signed on Seaport? This is one transaction, and it also cancels orders made on other Seaport marketplaces.')) return;
+      runTx(cancelAll, (st) => HPTrade.cancelAll(market, st), 'All your listings and offers are cancelled.').then(renderWalletTools);
+    };
+    panel.replaceChildren(
+      el('h3', {}, 'Your wallet'),
+      el('div', { class: 'row' }, el('span', {}, `WETH: ${eth(balance, 'WETH')}`), unwrap),
+      el('div', { class: 'row' }, el('span', {}, `Open listings and offers: ${mineOpen}`), cancelAll));
+    panel.classList.remove('hidden');
+  }
+
   function renderCounts() {
+    $('offersTab').classList.toggle('hidden', !market.enabled);
+    $('nOffers').textContent = String(market.offers.filter((o) => !owner || same(o.maker, owner)).length);
     $('nItems').textContent = scope().length.toLocaleString();
     $('nHolders').textContent = new Set(prints.map((p) => p.owner.toLowerCase())).size.toLocaleString();
     const acts = owner ? data.activity.filter((a) => same(a.from, owner) || same(a.to, owner)).length : data.activityTotal;
@@ -276,7 +409,8 @@
 
   function renderTab() {
     for (const b of $('tabs').querySelectorAll('button')) b.classList.toggle('on', b.dataset.tab === tab);
-    for (const t of ['items', 'activity', 'holders']) $(`tab-${t}`).classList.toggle('hidden', t !== tab);
+    for (const t of ['items', 'activity', 'offers', 'holders']) $(`tab-${t}`).classList.toggle('hidden', t !== tab);
+    if (tab === 'offers') renderOffers();
     if (tab === 'activity') renderActivity();
     if (tab === 'holders') renderHolders();
   }
@@ -316,7 +450,7 @@
   function applyMarket() {
     listed = new Map();
     const owners = new Map(prints.map((p) => [p.id, p.owner]));
-    for (const l of market.listings) if (same(owners.get(l.tokenId), l.seller)) listed.set(l.tokenId, l);
+    for (const l of market.listings) if (same(owners.get(l.tokenId), l.maker)) listed.set(l.tokenId, l);
     market.listings = market.listings.filter((l) => listed.get(l.tokenId) === l);
     for (const p of prints) p.traits.Status = listed.has(p.id) ? 'Buy now' : 'Not listed';
   }
@@ -426,7 +560,7 @@
   }
   $('walletBtn').addEventListener('click', async () => {
     if (!account) {
-      const w = await HPWallet.connect();
+      const w = data ? await HPTrade.connect(data.chainId, false) : await HPWallet.connect();
       if (!w) return;
       setAccount(w.address);
     }
@@ -439,5 +573,5 @@
 
   refresh(true);
   setInterval(() => { if (!document.hidden) refresh(false); }, REFRESH_MS);
-  HPWallet.reconnect().then((w) => w && setAccount(w.address)).catch(() => {});
+  HPTrade.connect(0, true).then((w) => w && setAccount(w.address)).catch(() => {});
 })();

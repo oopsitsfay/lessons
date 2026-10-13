@@ -142,6 +142,29 @@
   .share span { display: block; height: 100%; background: var(--accent); }
   @media (max-width: 640px) { table.list .hide-sm { display: none; } table.list td, table.list th { padding: 9px 4px; } }
 
+  .panel { border: 2px solid var(--ink); padding: 16px; margin: 20px 0 0; max-width: 560px; }
+  .panel h3 { margin: 0 0 4px; font-size: 18px; }
+  .panel p { margin: 0 0 12px; color: var(--ink-2); font-size: 14px; }
+  .panel form { display: grid; gap: 10px; }
+  .panel label { font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); display: grid; gap: 6px; }
+  .panel input, .panel select { font: 15px "JetBrains Mono", monospace; padding: 10px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); width: 100%; }
+  .panel .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .panel .split { font: 12px "JetBrains Mono", monospace; color: var(--ink-2); line-height: 1.7; }
+  .panel .split div { display: flex; justify-content: space-between; gap: 12px; }
+  .panel .note { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .panel .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .panel .acts button { flex: 1 1 140px; }
+  .panel button { font: 700 13px "JetBrains Mono", monospace; padding: 10px 16px; border: 2px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; }
+  .panel button.primary { background: var(--ink); color: var(--paper); }
+  .panel button:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #000; }
+  .panel button:disabled { opacity: .45; cursor: not-allowed; }
+  .panel .msg { font: 13px "JetBrains Mono", monospace; margin-top: 12px; min-height: 1.2em; word-break: break-word; }
+  .panel .msg.bad { color: var(--bad); }
+  .panel .msg.good { color: var(--ok); }
+  .panel .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--rule); }
+  .panel .row:first-of-type { border-top: 0; }
+  table.list .act { font: 700 12px "JetBrains Mono", monospace; padding: 6px 10px; border: 2px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; text-decoration: none; white-space: nowrap; }
+  table.list .act:hover { background: var(--accent); border-color: var(--accent); color: #000; }
   .err { border-left: 4px solid var(--bad); padding: 12px 16px; background: var(--paper-2); margin: 24px 0; }
   footer { border-top: 1px solid var(--rule); margin-top: 64px; padding: 24px 0 40px; color: var(--muted); font: 12px "JetBrains Mono", monospace; }
   footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -167,10 +190,12 @@
   <p class="desc" id="desc">3,333 pixel prints made by proof of work. Each one is drawn from the hash its minter found in their browser. Extra work makes a print rarer, never cheaper.</p>
   <div class="stats" id="stats"></div>
   <div class="progress" id="progressWrap"><span id="progress"></span></div>
+  <div class="panel hidden" id="panel"></div>
 
   <div class="tabs" role="tablist" id="tabs">
     <button type="button" data-tab="items" class="on">Items <em id="nItems"></em></button>
     <button type="button" data-tab="activity">Activity <em id="nActivity"></em></button>
+    <button type="button" data-tab="offers" id="offersTab" class="hidden">Offers <em id="nOffers"></em></button>
     <button type="button" data-tab="holders" id="holdersTab">Holders <em id="nHolders"></em></button>
   </div>
 
@@ -207,13 +232,21 @@
     <table class="list"><thead><tr><th>Event</th><th>Print</th><th class="hide-sm">From</th><th>To</th><th class="num">When</th></tr></thead><tbody id="activity"></tbody></table>
   </section>
 
+  <section id="tab-offers" class="hidden">
+    <p class="count" id="offersNote"></p>
+    <table class="list"><thead><tr><th>Print</th><th class="num">Offer</th><th class="hide-sm">From</th><th class="num hide-sm">Ends</th><th class="num"></th></tr></thead><tbody id="offersBody"></tbody></table>
+  </section>
+
   <section id="tab-holders" class="hidden">
     <table class="list"><thead><tr><th class="num" style="width:48px">#</th><th>Wallet</th><th class="num">Prints</th><th class="num hide-sm">Share</th></tr></thead><tbody id="holders"></tbody></table>
   </section>
 </main>
 <footer><div class="wrap"><span id="foot">Read from the chain.</span><span><a href="/">About HashPrints</a> · <a href="mint.html" id="footMint">Mint</a></span></div></footer>
 
+<script src="vendor/ethers-6.umd.min.js"></script>
 <script src="wallet.js"></script>
+<script src="market-core.js"></script>
+<script src="market.js"></script>
 <script src="hashprints.js"></script>
 <script src="collection.js"></script>
 </body>

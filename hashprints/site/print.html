@@ -57,6 +57,18 @@
   .trade .msg { font: 13px "JetBrains Mono", monospace; margin-top: 12px; min-height: 1.2em; word-break: break-word; }
   .trade .msg.bad { color: #c62828; }
   .trade .msg.good { color: #00835a; }
+  .trade .split div { display: flex; justify-content: space-between; }
+  .trade .note { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .trade form label { margin-top: 2px; }
+  #offers { margin: 0 0 24px; }
+  #offers .none { color: var(--muted); font: 13px "JetBrains Mono", monospace; margin: 0; }
+  table.offers td, table.offers th { vertical-align: middle; }
+  table.offers th { width: auto; }
+  table.offers td { text-align: left; }
+  table.offers td:last-child { text-align: right; }
+  table.offers button { padding: 7px 12px; font-size: 12px; }
+  table.offers button.primary { background: var(--ink); color: var(--paper); }
+  table.offers .sub { margin: 2px 0 0; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -111,6 +123,7 @@
           <div class="sub">seed ${seed}</div>
           <div class="trade" id="trade" hidden></div>
           <table id="own" hidden></table>
+          <div id="offers" hidden></div>
           <h2>Traits</h2>
           <table id="t"></table>
           <div id="histWrap" hidden><h2>History</h2><table class="hist" id="hist"></table></div>
@@ -170,32 +183,31 @@
       trade(token, chain).catch(() => {});
     }
 
-    // ---------------------------------------------------------------- buy / sell
+    // ---------------------------------------------------------------- buy / sell / offers
     async function trade(token, chain) {
       const box = document.getElementById('trade');
+      const offersBox = document.getElementById('offers');
       let market;
       try { market = await HPTrade.load(key); } catch { return; }
       if (!market.enabled) return;
       await HPTrade.connect(market.chainId, true).catch(() => null);
-      const same = (a, b) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+      const { el, eth } = HPTrade;
+      const same = HPMarket.same;
       const short = (a) => `${a.slice(0, 6)}…${a.slice(-4)}`;
       const ends = (t) => new Date(t * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      const feeText = market.fees.map((f) => `${f.label.toLowerCase()} ${f.bps / 100}%`).join(' + ') || 'no fees';
       let owner = token.owner;
       let busy = false;
-      let selling = false;
-
-      const el = (tag, attrs = {}, ...kids) => {
-        const n = document.createElement(tag);
-        for (const [k, v] of Object.entries(attrs)) if (k === 'class') n.className = v; else if (k.startsWith('on')) n[k] = v; else n.setAttribute(k, v);
-        n.append(...kids.filter((k) => k !== null && k !== undefined));
-        return n;
-      };
+      let mode = null; // null | 'list' | 'reprice' | 'offer' | 'transfer'
       const msg = el('div', { class: 'msg', role: 'status' });
       const say = (text, kind = '') => { msg.textContent = text; msg.className = `msg ${kind}`; };
+
+      async function refresh() { market = await HPTrade.load(key).catch(() => market); }
 
       async function act(fn, done) {
         if (busy) return;
         busy = true;
+        say('');
         render();
         try {
           await fn((t) => say(t));
@@ -210,71 +222,131 @@
 
       async function connectThen(next) {
         const w = await HPTrade.connect(market.chainId, false);
-        if (w) { render(); if (next) next(); }
+        if (w) { if (next) next(); render(); }
       }
 
-      function sellForm() {
-        const price = el('input', { type: 'text', inputmode: 'decimal', placeholder: '0.01', 'aria-label': 'Price in ETH', autocomplete: 'off' });
-        const days = el('select', { 'aria-label': 'Listing length' },
-          ...[[1, '1 day'], [3, '3 days'], [7, '7 days'], [30, '30 days'], [90, '90 days'], [180, '180 days']].map(([v, t]) => { const o = el('option', { value: v }, t); if (v === 30) o.selected = true; return o; }));
-        const split = el('div', { class: 'split' });
-        const submit = el('button', { type: 'submit', class: 'primary' }, 'List for sale');
-        const update = () => {
-          let wei = null;
-          try { if (/^\d*\.?\d+$/.test(price.value.trim())) wei = ethers.parseEther(price.value.trim()); } catch {}
-          submit.disabled = !wei || wei <= 0n || busy;
-          if (!wei || wei <= 0n) { split.textContent = 'Enter a price in ETH.'; return; }
-          const s = HPMarket.split(wei, market.royalty);
-          split.textContent = market.royalty
-            ? `Buyer pays ${HPTrade.eth(s.price)} · creator royalty ${market.royalty.bps / 100}% (${HPTrade.eth(s.fee)}) · you get ${HPTrade.eth(s.seller)}`
-            : `Buyer pays ${HPTrade.eth(s.price)} · you get all of it. No marketplace fee.`;
-        };
-        price.oninput = update;
-        update();
-        const form = el('form', { onsubmit: (e) => {
-          e.preventDefault();
-          const priceWei = ethers.parseEther(price.value.trim());
-          act((status) => HPTrade.list(market, { tokenId: token.id, priceWei, days: Number(days.value), onStatus: status }), async () => {
-            market = await HPTrade.load(key);
-            selling = false;
-            say('Listed. Anyone can buy it now.', 'good');
-          });
-        } },
-        el('div', { class: 'two' }, el('label', {}, 'Price (ETH)', price), el('label', {}, 'Listed for', days)),
-        split,
-        el('div', { class: 'acts' }, submit, el('button', { type: 'button', onclick: () => { selling = false; render(); } }, 'Back')));
-        setTimeout(() => price.focus(), 0);
-        return form;
+      const btn = (label, onclick, primary) => {
+        const b = el('button', { type: 'button', class: primary ? 'primary' : '', onclick }, label);
+        b.disabled = busy;
+        return b;
+      };
+
+      function listingNow() {
+        return market.listings.find((l) => l.tokenId === token.id && same(l.maker, owner)) || null;
+      }
+
+      function priceBox() {
+        const me = HPTrade.wallet?.address;
+        const mine = same(me, owner);
+        const listing = listingNow();
+        const kids = [];
+        if (listing) {
+          kids.push(el('div', { class: 'row1' }, el('span', { class: 'lbl' }, 'For sale'), el('span', { class: 'price' }, eth(listing.price))));
+          kids.push(el('div', { class: 'sub' }, `Listed by ${mine ? 'you' : short(listing.maker)} · until ${ends(listing.endTime)} · includes ${feeText}`));
+        } else {
+          kids.push(el('div', { class: 'row1' }, el('span', { class: 'lbl' }, 'Not for sale'), token.lastSale ? el('span', { class: 'sub' }, `Last sale ${eth(token.lastSale.price)}`) : null));
+        }
+        const top = market.offers.find((o) => o.tokenId === token.id || o.tokenId === null);
+        if (top) kids.push(el('div', { class: 'sub' }, `Best offer ${eth(top.price, 'WETH')}${top.tokenId === null ? ' (collection offer)' : ''}`));
+
+        if (mode === 'list' || mode === 'reprice') {
+          const reprice = mode === 'reprice';
+          kids.push(HPTrade.priceForm(market, {
+            mode: 'list',
+            submitLabel: reprice ? 'Cancel old listing and relist' : 'List for sale',
+            initial: reprice ? (Number(BigInt(listing.price)) / 1e18).toString() : '',
+            note: reprice ? 'Changing the price cancels the current listing on chain (one small transaction), then you sign the new one.' : null,
+            onBack: () => { mode = null; render(); },
+            onSubmit: ({ wei, days }) => act(async (st) => {
+              if (reprice) { await HPTrade.cancel(market, listing, (t) => st(`Cancelling the old listing: ${t}`)); }
+              await HPTrade.list(market, { tokenId: token.id, priceWei: wei, days, onStatus: st });
+            }, async () => { await refresh(); mode = null; say('Listed. Anyone can buy it now.', 'good'); }),
+          }));
+        } else if (mode === 'offer') {
+          kids.push(HPTrade.priceForm(market, {
+            mode: 'offer', submitLabel: 'Make offer',
+            note: 'Offers are paid in WETH (wrapped ETH, always worth 1 ETH). If you don\'t have enough, your wallet will first wrap the difference. Signing the offer is free.',
+            onBack: () => { mode = null; render(); },
+            onSubmit: ({ wei, days }) => act((st) => HPTrade.offer(market, { tokenId: token.id, amountWei: wei, days, onStatus: st }), async () => { await refresh(); mode = null; say('Offer made. The owner can accept it any time before it ends.', 'good'); }),
+          }));
+        } else if (mode === 'transfer') {
+          const to = el('input', { type: 'text', placeholder: '0x…', 'aria-label': 'Send to address', autocomplete: 'off', spellcheck: 'false' });
+          kids.push(el('form', { onsubmit: (e) => {
+            e.preventDefault();
+            const v = to.value.trim();
+            if (!ethers.isAddress(v)) return say('That isn\'t a valid address.', 'bad');
+            if (same(v, owner)) return say('That\'s the wallet it\'s already in.', 'bad');
+            if (!confirm(`Send ${document.title} to ${v}? This can't be undone.`)) return;
+            act((st) => HPTrade.transfer(market, token.id, v, st), async () => { owner = ethers.getAddress(v); await refresh(); mode = null; say(`Sent to ${short(v)}.`, 'good'); });
+          } },
+          el('label', {}, 'Send to', to),
+          el('div', { class: 'note' }, listingNow() ? 'Sending it also ends your listing.' : 'Double-check the address. Prints sent to a wrong address can\'t be recovered.'),
+          el('div', { class: 'acts' }, el('button', { type: 'submit', class: 'primary' }, 'Send'), btn('Back', () => { mode = null; render(); }))));
+        } else {
+          const acts = el('div', { class: 'acts' });
+          if (!me) {
+            if (listing) acts.append(btn('Connect wallet to buy', () => connectThen(), true));
+            acts.append(btn(listing ? 'Connect to make an offer' : 'Connect wallet', () => connectThen()));
+          } else if (mine) {
+            if (listing) {
+              acts.append(btn('Change price', () => { mode = 'reprice'; render(); }, true));
+              acts.append(btn('Cancel listing', () => act((st) => HPTrade.cancel(market, listing, st), async () => { await refresh(); say('Listing cancelled.', 'good'); })));
+            } else {
+              acts.append(btn('List for sale', () => { mode = 'list'; render(); }, true));
+            }
+            acts.append(btn('Transfer', () => { mode = 'transfer'; say(''); render(); }));
+          } else {
+            if (listing) acts.append(btn(`Buy now for ${eth(listing.price)}`, () => act((st) => HPTrade.buy(market, listing, st), async () => {
+              owner = me;
+              await refresh();
+              say('Bought. It\'s in your wallet now; the page will catch up in a few seconds.', 'good');
+              setTimeout(() => location.reload(), 6000);
+            }), true));
+            acts.append(btn('Make offer', () => { mode = 'offer'; say(''); render(); }, !listing));
+          }
+          kids.push(acts);
+        }
+        kids.push(msg);
+        return kids;
+      }
+
+      function offersTable() {
+        const me = HPTrade.wallet?.address;
+        const mine = same(me, owner);
+        const rows = market.offers.filter((o) => o.tokenId === token.id || o.tokenId === null);
+        if (!rows.length) return [el('h2', {}, 'Offers'), el('p', { class: 'none' }, 'No offers yet.')];
+        const table = el('table', { class: 'offers' });
+        const head = table.insertRow();
+        for (const h of ['Offer', 'From', 'Ends', '']) head.appendChild(el('th', {}, h));
+        for (const o of rows) {
+          const tr = table.insertRow();
+          tr.insertCell().append(el('b', {}, eth(o.price, 'WETH')), o.tokenId === null ? el('div', { class: 'sub' }, 'collection offer') : '');
+          tr.insertCell().append(same(o.maker, me) ? 'you' : el('a', { href: `collection.html?${key === 'test' ? 'c=test&' : ''}owner=${o.maker}` }, short(o.maker)));
+          tr.insertCell().append(ends(o.endTime));
+          const cell = tr.insertCell();
+          if (mine) {
+            cell.append(btn('Accept', () => {
+              if (!confirm(`Sell ${document.title} for ${eth(o.price, 'WETH')}?\n\nYou receive ${eth(o.net, 'WETH')} after ${feeText}. WETH is wrapped ETH; you can unwrap it from your wallet page.`)) return;
+              act((st) => HPTrade.accept(market, o, token.id, st), async () => {
+                owner = o.maker;
+                await refresh();
+                say(`Sold for ${eth(o.price, 'WETH')}. ${eth(o.net, 'WETH')} is in your wallet.`, 'good');
+                setTimeout(() => location.reload(), 6000);
+              });
+            }, true));
+            cell.append(el('div', { class: 'sub' }, `you get ${eth(o.net, 'WETH')}`));
+          } else if (same(o.maker, me)) {
+            cell.append(btn('Cancel', () => act((st) => HPTrade.cancel(market, o, st), async () => { await refresh(); say('Offer cancelled.', 'good'); })));
+          }
+        }
+        return [el('h2', {}, `Offers (${rows.length})`), table];
       }
 
       function render() {
-        const me = HPTrade.wallet?.address;
-        const listing = market.listings.find((l) => l.tokenId === token.id && same(l.seller, owner));
-        const mine = same(me, owner);
-        const kids = [];
-        if (listing) {
-          kids.push(el('div', { class: 'row1' }, el('span', { class: 'lbl' }, 'For sale'), el('span', { class: 'price' }, HPTrade.eth(listing.price))));
-          kids.push(el('div', { class: 'sub' }, `Listed by ${mine ? 'you' : short(listing.seller)} · until ${ends(listing.endTime)} · settles on Seaport`));
-          const acts = el('div', { class: 'acts' });
-          if (!me) acts.append(el('button', { type: 'button', class: 'primary', onclick: () => connectThen() }, 'Connect wallet to buy'));
-          else if (mine) acts.append(el('button', { type: 'button', onclick: () => act((st) => HPTrade.cancel(market, listing, st), async () => { market = await HPTrade.load(key); say('Listing cancelled.', 'good'); }) }, 'Cancel listing'));
-          else acts.append(el('button', { type: 'button', class: 'primary', onclick: () => act((st) => HPTrade.buy(market, listing, st), async () => {
-            owner = me;
-            market = await HPTrade.load(key).catch(() => market);
-            say('Bought. It\'s in your wallet now; the page will catch up in a few seconds.', 'good');
-            setTimeout(() => location.reload(), 6000);
-          }) }, 'Buy now'));
-          for (const b of acts.querySelectorAll('button')) b.disabled = busy;
-          kids.push(acts);
-        } else {
-          kids.push(el('div', { class: 'row1' }, el('span', { class: 'lbl' }, 'Not for sale'), token.lastSale ? el('span', { class: 'sub' }, `Last sale ${HPTrade.eth(token.lastSale.price)}`) : null));
-          if (mine && selling) kids.push(sellForm());
-          else if (mine) kids.push(el('div', { class: 'acts' }, el('button', { type: 'button', class: 'primary', onclick: () => { selling = true; say(''); render(); } }, 'List for sale')));
-          else if (!me) kids.push(el('div', { class: 'acts' }, el('button', { type: 'button', onclick: () => connectThen(() => { if (same(HPTrade.wallet?.address, owner)) { selling = true; render(); } }) }, 'Own this print? Connect to sell')));
-        }
-        kids.push(msg);
-        box.replaceChildren(...kids);
+        box.replaceChildren(...priceBox());
         box.hidden = false;
+        offersBox.replaceChildren(...offersTable());
+        offersBox.hidden = false;
       }
       render();
     }

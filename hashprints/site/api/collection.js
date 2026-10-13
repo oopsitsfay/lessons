@@ -25,7 +25,6 @@ const ACTIVITY_LIMIT = 200;
 const EXACT_TIMES = 40; // newest blocks that get a real timestamp; older ones are estimated
 
 const SALE_LOOKUPS = 300; // receipts read per request at most; the rest wait for the next one
-const WETH = { 1: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' };
 
 // Per warm instance: logs already fetched, block timestamps and sale lookups already done.
 const scans = new Map();
@@ -105,7 +104,8 @@ async function findSales(provider, cfg, txs) {
       }
       if (!item || !paid || !paid.length) continue;
       const token = paid[0].token.toLowerCase();
-      const currency = token === ethers.ZeroAddress ? 'ETH' : token === WETH[cfg.chainId] ? 'WETH' : 'token';
+      const weth = (cfg.weth || M.WETH[cfg.chainId] || '').toLowerCase();
+      const currency = token === ethers.ZeroAddress ? 'ETH' : token === weth ? 'WETH' : 'token';
       found.push({ id: Number(item.identifier), price: paid.reduce((sum, i) => sum + i.amount, 0n).toString(), currency });
     }
     sales.set(hash, found);

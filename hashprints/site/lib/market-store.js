@@ -1,37 +1,48 @@
-// Where signed listings live. One small JSON file per token (market/<collection>/<id>.json), so
-// two sellers listing at once never overwrite each other. Vercel Blob in production
-// (BLOB_READ_WRITE_TOKEN, set when a Blob store is connected to the project), a local folder
-// in tests (MARKET_STORE_DIR). With neither, the market is switched off.
+// Where signed orders live: market/<collection>/<kind>/<name>.json, one small file per order, so
+// two people posting at once never overwrite each other. Listings are named by token id (one
+// per print), offers by order hash. Vercel Blob in production (BLOB_READ_WRITE_TOKEN, set when a
+// Blob store is connected to the project), a local folder in tests (MARKET_STORE_DIR). With
+// neither, the market is switched off.
 const fs = require('fs');
 const path = require('path');
 
+const KINDS = new Set(['listings', 'offers']);
+const safe = (name) => String(name).replace(/[^0-9a-zA-Zx]/g, '');
+function check(kind) {
+  if (!KINDS.has(kind)) throw new Error(`unknown kind ${kind}`);
+}
+
 function fileStore(dir) {
-  const file = (key, id) => path.join(dir, key, `${Number(id)}.json`);
+  const folder = (key, kind) => path.join(dir, key, kind);
   return {
-    async all(key) {
-      const d = path.join(dir, key);
+    async all(key, kind) {
+      check(kind);
+      const d = folder(key, kind);
       if (!fs.existsSync(d)) return [];
       return fs.readdirSync(d).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(fs.readFileSync(path.join(d, f), 'utf8')));
     },
-    async put(key, id, value) {
-      fs.mkdirSync(path.join(dir, key), { recursive: true });
-      fs.writeFileSync(file(key, id), JSON.stringify(value));
+    async put(key, kind, name, value) {
+      check(kind);
+      fs.mkdirSync(folder(key, kind), { recursive: true });
+      fs.writeFileSync(path.join(folder(key, kind), `${safe(name)}.json`), JSON.stringify(value));
     },
-    async remove(key, id) {
-      fs.rmSync(file(key, id), { force: true });
+    async remove(key, kind, name) {
+      check(kind);
+      fs.rmSync(path.join(folder(key, kind), `${safe(name)}.json`), { force: true });
     },
   };
 }
 
 function blobStore() {
   const blob = require('@vercel/blob');
-  const name = (key, id) => `market/${key}/${Number(id)}.json`;
+  const file = (key, kind, name) => `market/${key}/${kind}/${safe(name)}.json`;
   return {
-    async all(key) {
+    async all(key, kind) {
+      check(kind);
       const found = [];
       let cursor;
       do {
-        const page = await blob.list({ prefix: `market/${key}/`, cursor, limit: 1000 });
+        const page = await blob.list({ prefix: `market/${key}/${kind}/`, cursor, limit: 1000 });
         found.push(...page.blobs);
         cursor = page.hasMore ? page.cursor : undefined;
       } while (cursor);
@@ -42,13 +53,15 @@ function blobStore() {
       }));
       return rows.filter(Boolean);
     },
-    async put(key, id, value) {
-      await blob.put(name(key, id), JSON.stringify(value), {
+    async put(key, kind, name, value) {
+      check(kind);
+      await blob.put(file(key, kind, name), JSON.stringify(value), {
         access: 'public', addRandomSuffix: false, allowOverwrite: true, contentType: 'application/json', cacheControlMaxAge: 60,
       });
     },
-    async remove(key, id) {
-      await blob.del(name(key, id)).catch(() => {});
+    async remove(key, kind, name) {
+      check(kind);
+      await blob.del(file(key, kind, name)).catch(() => {});
     },
   };
 }
