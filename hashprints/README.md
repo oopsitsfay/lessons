@@ -91,7 +91,7 @@ The 8% is enforced for trades made through this site. The HashPrints contract ha
 
 **Checks.** `POST /api/market` stores an order only if it has exactly the site's shape and fees, the signer's Seaport counter matches, it isn't cancelled or filled, Seaport itself accepts the signature (read-only `validate`), and for listings the seller owns the print and has approved Seaport, for offers the buyer holds and has approved enough WETH. `GET` re-checks all of that every time: sold, cancelled, expired or moved orders are deleted; offers whose buyer is short of WETH are hidden until they're funded again. A wallet can have at most 25 open offers per collection.
 
-**Storage.** Signed orders live in a Vercel Blob store (one JSON file per order). Create a **public** Blob store in the Vercel dashboard and connect it to the project; that adds `BLOB_READ_WRITE_TOKEN`. Without it the market is off and the pages hide the trading buttons.
+**Storage.** Signed orders live in a Vercel Blob store (one JSON file per order). Create a **public** Blob store in the Vercel dashboard and connect it to the project; that adds `BLOB_STORE_ID` (or `BLOB_READ_WRITE_TOKEN` on older stores). Without it the market is off and the pages hide the trading buttons.
 
 Sales made anywhere through Seaport (including OpenSea, and accepted WETH offers) show up in Activity with their price and count toward volume.
 

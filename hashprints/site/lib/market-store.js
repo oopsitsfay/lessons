@@ -1,7 +1,7 @@
 // Where signed orders live: market/<collection>/<kind>/<name>.json, one small file per order, so
 // two people posting at once never overwrite each other. Listings are named by token id (one
-// per print), offers by order hash. Vercel Blob in production (BLOB_READ_WRITE_TOKEN, set when a
-// Blob store is connected to the project), a local folder in tests (MARKET_STORE_DIR). With
+// per print), offers by order hash. Vercel Blob in production (BLOB_STORE_ID or
+// BLOB_READ_WRITE_TOKEN, set when a Blob store is connected to the project), a local folder in tests (MARKET_STORE_DIR). With
 // neither, the market is switched off.
 const fs = require('fs');
 const path = require('path');
@@ -68,7 +68,8 @@ function blobStore() {
 
 function store() {
   if (process.env.MARKET_STORE_DIR) return fileStore(process.env.MARKET_STORE_DIR);
-  if (process.env.BLOB_READ_WRITE_TOKEN) return blobStore();
+  // A connected store gives either a read-write token or a store id used with the function's OIDC token.
+  if (process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID) return blobStore();
   return null;
 }
 
