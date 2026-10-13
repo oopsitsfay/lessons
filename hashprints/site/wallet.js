@@ -4,10 +4,55 @@
  *   extensions don't fight over the page. One wallet connects straight away; several show a picker.
  * - On a phone browser with no wallet, offers "open this page in <wallet app>" links instead.
  * - Remembers the last wallet and reconnects silently (eth_accounts, no popup) on the next visit.
+ * - With a WalletConnect project id in mint-config.json, adds WalletConnect (QR on desktop, one tap
+ *   on phones) so collectors can use almost any wallet app without its in-app browser.
  * - toast() shows messages next to the action instead of in a log.
  */
 (function () {
   const KEY = 'hp.wallet.rdns';
+  const WC = 'walletconnect';
+  let configPromise;
+  const config = () => (configPromise ||= fetch('/mint-config.json', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({})));
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (window.HPWalletConnect) return resolve();
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('Could not load WalletConnect. Check your connection and try again.'));
+      document.head.appendChild(s);
+    });
+  }
+
+  function withTimeout(promise, ms, message) {
+    let t;
+    return Promise.race([promise, new Promise((_, reject) => { t = setTimeout(() => reject(new Error(message)), ms); })])
+      .finally(() => clearTimeout(t));
+  }
+
+  // WalletConnect: QR code on desktop, one tap on phones, works with almost any wallet app.
+  let wcProvider;
+  async function walletConnect() {
+    const { walletConnectProjectId: projectId } = await config();
+    if (!projectId) return null;
+    if (!wcProvider) {
+      toast('Opening WalletConnect…');
+      await loadScript('/vendor/walletconnect.js');
+      wcProvider = await withTimeout(window.HPWalletConnect.EthereumProvider.init({
+        projectId,
+        optionalChains: [1, 11155111],
+        showQrModal: true,
+        metadata: {
+          name: 'HashPrints',
+          description: 'Generative pixel prints minted with proof-of-work.',
+          url: location.origin,
+          icons: [`${location.origin}/icon.png`],
+        },
+      }), 20000, "Couldn't reach WalletConnect. Check your connection and try again.");
+    }
+    return { info: { name: 'WalletConnect', rdns: WC, icon: '' }, provider: wcProvider };
+  }
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const found = new Map();
 
@@ -106,6 +151,18 @@
 
   async function pick() {
     const list = await discover();
+    const { walletConnectProjectId } = await config();
+    const wcOption = walletConnectProjectId ? [{ label: isMobile ? 'WalletConnect (any wallet app)' : 'WalletConnect (scan with your phone)', value: WC }] : [];
+    if (wcOption.length) {
+      const choice = await sheet(
+        'Connect a wallet',
+        list.length ? 'Pick a wallet in this browser, or use WalletConnect.' : 'Use WalletConnect to connect with your wallet app.',
+        [...list.map((w) => ({ label: w.info.name, icon: w.info.icon, value: w })), ...wcOption,
+          ...(isMobile && !list.length ? appLinks() : [])],
+      );
+      if (choice === WC) return walletConnect();
+      return choice;
+    }
     if (!list.length) {
       if (isMobile) {
         await sheet('Open in your wallet app', 'This browser has no wallet. Open this page inside your wallet app to continue.', appLinks());
@@ -127,14 +184,31 @@
     try { localStorage.setItem(KEY, w.info.rdns); } catch {}
     w.provider.on?.('accountsChanged', () => location.reload());
     w.provider.on?.('chainChanged', () => location.reload());
+    w.provider.on?.('disconnect', () => { try { localStorage.removeItem(KEY); } catch {} location.reload(); });
     return { provider: w.provider, address: accounts[0].toLowerCase(), chainId, name: w.info.name };
   }
 
   // Ask the user to connect (shows the wallet popup).
   async function connect() {
-    const w = await pick();
+    let w;
+    try {
+      w = await pick();
+    } catch (e) {
+      toast(friendly(e), 'error');
+      return null;
+    }
     if (!w) return null;
     try {
+      if (w.info.rdns === WC && !w.provider.session) {
+        // The QR / wallet list opens once WalletConnect hands back a pairing link. If that never
+        // arrives the relay is unreachable, so say so instead of waiting forever. Approval itself
+        // has no time limit: people need time to find their phone.
+        const shown = new Promise((resolve) => w.provider.once('display_uri', resolve));
+        const approved = w.provider.connect();
+        approved.catch(() => {});
+        await withTimeout(Promise.race([shown, approved]), 20000, "Couldn't reach WalletConnect. Check your connection and try again.");
+        await approved;
+      }
       const accounts = await w.provider.request({ method: 'eth_requestAccounts' });
       if (!accounts?.length) throw new Error('No account was shared.');
       return await finish(w, accounts);
@@ -149,6 +223,12 @@
     let last;
     try { last = localStorage.getItem(KEY); } catch {}
     if (!last) return null;
+    if (last === WC) {
+      try {
+        const w = await walletConnect();
+        return w && w.provider.session && w.provider.accounts.length ? await finish(w, w.provider.accounts) : null;
+      } catch { return null; }
+    }
     const list = await discover();
     const w = list.find((x) => x.info.rdns === last) || (list.length === 1 ? list[0] : null);
     if (!w) return null;
@@ -168,7 +248,10 @@
     }
   }
 
-  function forget() { try { localStorage.removeItem(KEY); } catch {} }
+  function forget() {
+    try { localStorage.removeItem(KEY); } catch {}
+    if (wcProvider?.session) wcProvider.disconnect().catch(() => {});
+  }
 
   window.HPWallet = { connect, reconnect, switchChain, toast, friendly, forget, isMobile };
 })();

@@ -4,11 +4,15 @@
   "scripts": {
     "test": "hardhat test",
     "serve": "http-server site -p 8080 -c-1",
-    "export": "hardhat run scripts/export-artifact.js"
+    "export": "hardhat run scripts/export-artifact.js",
+    "build:walletconnect": "esbuild scripts/walletconnect-entry.js --bundle --minify --format=iife --platform=browser --target=es2020 --define:process.env.NODE_ENV=\\\"production\\\" --define:global=globalThis --outfile=site/vendor/walletconnect.js"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.2",
     "@openzeppelin/contracts": "^5.6.1",
+    "@walletconnect/ethereum-provider": "^2.26.0",
+    "@walletconnect/modal": "^2.7.0",
+    "esbuild": "^0.28.2",
     "hardhat": "^2.29.1",
     "js-sha3": "^0.13.0",
     "solc": "^0.8.28"

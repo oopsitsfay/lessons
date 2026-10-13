@@ -26,7 +26,8 @@ The supply shape is a constructor argument, so the same contract also deploys **
 - `site/index.html`, `site/app.js`, `site/grind-worker.js`: the website and simulator.
 - `site/print.html`: single-print viewer, used as each token's `external_url`.
 - `site/mint.html`, `site/mint.js`: public mint page. Shows "Not live" and blocks minting until the owner presses Go live, then switches over by itself (checks every 15 s).
-- `site/mint-config.json`: which contract the public mint page uses (`main` and `test`, with chain id and address).
+- `site/mint-config.json`: which contract the public mint page uses (`main` and `test`, with chain id and address), plus the WalletConnect project id.
+- `site/wallet.js`: shared wallet connector (EIP-6963 wallet picker, WalletConnect, wallet-app links on phones, silent reconnect).
 - `site/middleware.js`, `site/lib/admin-session.js`, `site/api/admin/`, `site/admin-login.html`: server-side wallet sign-in that gates the admin dashboard.
 - `site/admin.html`, `site/admin.js`: owner dashboard. Connect a wallet to deploy, open minting, test-mint, withdraw, lock metadata and transfer ownership.
 - `site/contract/`: compiled ABI + bytecode the admin page deploys, and the standard JSON input for Etherscan verification (`npm run export` regenerates both).
@@ -62,6 +63,12 @@ Once signed in, connect the wallet that should own the contract.
 6. **Withdraw** sends the mint revenue (the contract balance) to any address. It defaults to the owner wallet.
 
 Owner-only actions are enforced by the contract. The page itself holds no keys.
+
+## WalletConnect
+
+Paste a WalletConnect project id into `site/mint-config.json` (`walletConnectProjectId`) to add a WalletConnect option to the mint, sign-in and admin pages: a QR code on desktop, one tap on phones, and it works with almost any wallet app. Get the id free at [dashboard.reown.com](https://dashboard.reown.com) and add the site's domain to the project's allowed domains. With no id, the option is simply hidden.
+
+`site/vendor/walletconnect.js` is a browser bundle of `@walletconnect/ethereum-provider`, rebuilt with `npm run build:walletconnect`. Pages only download it when someone picks WalletConnect.
 
 ## Metadata
 
