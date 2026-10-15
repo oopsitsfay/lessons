@@ -9,59 +9,59 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+<script src="theme.js"></script>
 <style>
-  :root { --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --ink-2: #4a463d; --muted: #7a7466; --rule: #d6cfbd; --accent: #ff48b0; --ok: #00835a; --bad: #c62828; --gold: #b38b14; color-scheme: light; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --gold: #ffd700; color-scheme: dark; }
-  }
-  :root[data-theme="dark"] { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --gold: #ffd700; color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 "Space Grotesk", system-ui, sans-serif; }
-  a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--accent); }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
-  nav { border-bottom: 1px solid var(--rule); }
-  nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; }
-  .logo { font: 700 18px "JetBrains Mono", monospace; text-decoration: none; }
-  .logo span { color: var(--accent); }
-  main { padding: 48px 0 80px; }
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: start; }
-  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; gap: 28px; } }
-  h1 { font-size: clamp(40px, 7vw, 64px); line-height: 1; letter-spacing: -2px; margin: 0 0 12px; }
-  .badge { display: inline-flex; align-items: center; gap: 8px; font: 700 12px "JetBrains Mono", monospace; letter-spacing: 1px; text-transform: uppercase; padding: 6px 12px; border: 2px solid var(--rule); margin-bottom: 20px; }
-  .badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .badge.live { border-color: var(--ok); color: var(--ok); }
-  .badge.live i { background: var(--ok); animation: pulse 1.6s infinite; }
-  .badge.off { border-color: var(--bad); color: var(--bad); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+  main { padding: 0 0 24px; }
+  .page-head { padding: 72px 0 80px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 72px; align-items: start; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; gap: 36px; } .page-head { padding: 48px 0 56px; } }
+  h1 { font-size: clamp(48px, 7vw, 84px); line-height: .96; letter-spacing: -.045em; margin: 0 0 22px; }
+  .badge { display: inline-flex; align-items: center; gap: 10px; font: 500 12px "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 7px 14px; margin-bottom: 28px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+  .badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .badge.live i { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); animation: pulse 1.8s infinite; }
   .badge.off i { background: var(--bad); }
-  @keyframes pulse { 50% { opacity: .3; } }
-  @media (prefers-reduced-motion: reduce) { .badge.live i { animation: none; } }
-  .lede { color: var(--ink-2); font-size: 18px; margin: 0 0 24px; }
-  .facts { border-top: 2px solid var(--ink); margin: 0 0 24px; font: 14px "JetBrains Mono", monospace; }
-  .facts div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .lede { color: var(--text-2); font-size: 18px; margin: 0 0 32px; max-width: 540px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px 24px; margin: 0 0 20px; }
+  .facts { margin: 0; font: 14px "JetBrains Mono", monospace; }
+  .facts div { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+  .facts div:last-child { border-bottom: 0; }
   .facts dt { color: var(--muted); }
   .facts dd { margin: 0; text-align: right; }
-  .bar { height: 8px; background: var(--paper-2); border: 1px solid var(--rule); margin: -12px 0 24px; }
-  .bar span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .4s; }
-  button { font: 700 14px "JetBrains Mono", monospace; padding: 14px 18px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; width: 100%; letter-spacing: .5px; }
-  button.ghost { background: transparent; color: var(--ink); }
-  button:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #000; }
+  .bar { height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 0 0 28px; }
+  .bar span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .6s; }
+  button { display: inline-flex; align-items: center; justify-content: center; font: 700 13px "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; padding: 15px 22px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; width: 100%; border-radius: var(--r); transition: background .15s, color .15s, border-color .15s; }
+  button:hover:not(:disabled) { background: var(--text); border-color: var(--text); color: var(--bg); }
+  button.ghost { background: transparent; color: var(--text); border-color: var(--line-2); }
+  button.ghost:hover:not(:disabled) { background: var(--surface-2); color: var(--text); border-color: var(--text-2); }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  .row { display: flex; gap: 8px; margin-top: 8px; }
+  .row { display: flex; gap: 8px; margin-top: 12px; }
   .row button { flex: 1; }
-  label { display: block; font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 16px 0 6px; }
-  select { width: 100%; font: 13px "JetBrains Mono", monospace; padding: 10px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); }
-  .frame { background: var(--paper-2); border: 1px solid var(--rule); padding: 14px; }
+  label { display: block; font: 500 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 0 0 8px; }
+  select { width: 100%; font: 13px "JetBrains Mono", monospace; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r); }
+  select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .frame { background: var(--surface); border: 1px solid var(--line-2); padding: 14px; box-shadow: var(--shadow); border-radius: 2px; }
+  .frame-cap { display: flex; justify-content: space-between; margin-top: 12px; font: 11px "JetBrains Mono", monospace; color: var(--muted); }
   canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
-  .msg { font: 13px "JetBrains Mono", monospace; color: var(--ink-2); margin-top: 14px; min-height: 1.5em; word-break: break-word; }
+  .msg { font: 13px "JetBrains Mono", monospace; color: var(--text-2); margin-top: 16px; min-height: 1.5em; word-break: break-word; }
   .msg.err { color: var(--bad); }
-  .result { margin-top: 16px; font: 13px "JetBrains Mono", monospace; }
+  .result { margin-top: 20px; font: 13px "JetBrains Mono", monospace; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 6px 20px; }
   .result table { width: 100%; border-collapse: collapse; }
-  .result th, .result td { text-align: left; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  .result th, .result td { text-align: left; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .result tr:last-child th, .result tr:last-child td { border-bottom: 0; }
   .result th { color: var(--muted); font-weight: 400; }
   .result td { text-align: right; }
   .gold { color: var(--gold); font-weight: 700; }
-  .notlive { border: 1px dashed var(--rule); padding: 20px; text-align: center; color: var(--ink-2); }
-  .hidden { display: none !important; }
+  .notlive { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 22px; color: var(--text-2); font-size: 15px; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 72px; }
+  .steps > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 26px 24px; }
+  .steps .n { font: 700 12px "JetBrains Mono", monospace; color: var(--accent); letter-spacing: .1em; margin-bottom: 26px; }
+  .steps h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.01em; }
+  .steps p { margin: 0; color: var(--text-2); font-size: 14px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr; margin-top: 48px; } }
 </style>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HashPrints">
@@ -77,47 +77,68 @@
 <meta name="twitter:image" content="https://hashprints.vercel.app/og.png">
 </head>
 <body>
-<nav><div class="wrap"><a class="logo" href="/">HASH<span>/</span>PRINTS</a><span style="display:flex;gap:20px"><a href="collection.html" id="navCollection">Collection</a><a href="/#minting">How it works</a><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X</a></span></div></nav>
-<main class="wrap">
-  <div class="grid">
-    <div>
-      <div class="badge" id="badge"><i></i><span id="badgeText">Checking…</span></div>
-      <h1 id="title">Mint</h1>
-      <p class="lede" id="lede">Your browser searches for a hash that starts with enough zero bits. Then you mint it at the fixed price. You pay gas on top.</p>
-      <dl class="facts">
-        <div><dt>Price</dt><dd id="fPrice">0.000315 ETH + gas</dd></div>
-        <div><dt>Minted</dt><dd id="fMinted">–</dd></div>
-        <div><dt>Difficulty</dt><dd id="fDiff">–</dd></div>
-        <div><dt>Per wallet</dt><dd id="fWallet">2 max</dd></div>
-        <div><dt>Network</dt><dd id="fNet">–</dd></div>
-      </dl>
-      <div class="bar"><span id="bar"></span></div>
+<nav class="top"><div class="wrap">
+  <a class="logo" href="/">HASH<span>/</span>PRINTS</a>
+  <div class="links"><a href="/">About</a><a href="mint.html" class="on">Mint</a><a href="collection.html" id="navCollection">Collection</a><a href="/#minting">How it works</a><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X</a></div>
+  <div class="nav-actions"><button class="theme-toggle" id="themeToggle" type="button">Paper</button></div>
+</div></nav>
+<main>
+  <header class="page-head"><div class="wrap">
+    <div class="grid">
+      <div>
+        <div class="badge" id="badge"><i></i><span id="badgeText">Checking…</span></div>
+        <h1 id="title">Mint</h1>
+        <p class="lede" id="lede">Your browser searches for a hash that starts with enough zero bits. Then you mint it at the fixed price. You pay gas on top.</p>
+        <div class="card"><dl class="facts">
+          <div><dt>Price</dt><dd id="fPrice">0.000315 ETH + gas</dd></div>
+          <div><dt>Minted</dt><dd id="fMinted">–</dd></div>
+          <div><dt>Difficulty</dt><dd id="fDiff">–</dd></div>
+          <div><dt>Per wallet</dt><dd id="fWallet">2 max</dd></div>
+          <div><dt>Network</dt><dd id="fNet">–</dd></div>
+        </dl></div>
+        <div class="bar"><span id="bar"></span></div>
 
-      <div id="notLive" class="notlive hidden">Minting hasn't started yet. This page checks every 15 seconds and opens automatically when it goes live.</div>
+        <div id="notLive" class="notlive hidden">Minting hasn't started yet. This page checks every 15 seconds and opens automatically when it goes live.</div>
 
-      <div id="mintBox" class="hidden">
-        <button id="connectBtn" type="button">Connect wallet</button>
-        <div id="mintControls" class="hidden">
-          <label for="aim">Search until</label>
-          <select id="aim">
-            <option value="0">First valid hash</option>
-            <option value="2">+2 extra bits</option>
-            <option value="4">+4 extra bits · Gold Leaf</option>
-          </select>
-          <div class="row">
-            <button id="mintBtn" type="button">Find hash &amp; mint</button>
-            <button id="stopBtn" class="ghost" type="button" disabled style="flex:0 0 auto;width:auto">Stop</button>
+        <div id="mintBox" class="hidden">
+          <button id="connectBtn" type="button">Connect wallet</button>
+          <div id="mintControls" class="hidden">
+            <label for="aim">Search until</label>
+            <select id="aim">
+              <option value="0">First valid hash</option>
+              <option value="2">+2 extra bits</option>
+              <option value="4">+4 extra bits · Gold Leaf</option>
+            </select>
+            <div class="row">
+              <button id="mintBtn" type="button">Find hash &amp; mint</button>
+              <button id="stopBtn" class="ghost" type="button" disabled style="flex:0 0 auto;width:auto">Stop</button>
+            </div>
           </div>
         </div>
+        <div class="msg" id="msg"></div>
       </div>
-      <div class="msg" id="msg"></div>
+      <div>
+        <div class="frame"><canvas id="canvas" width="32" height="32"></canvas><div class="frame-cap"><span>Preview</span><span>32 × 32</span></div></div>
+        <div class="result hidden" id="result"><table id="resultTable"></table></div>
+      </div>
     </div>
-    <div>
-      <div class="frame"><canvas id="canvas" width="32" height="32"></canvas></div>
-      <div class="result hidden" id="result"><table id="resultTable"></table></div>
+  </div></header>
+
+  <div class="wrap">
+    <div class="steps">
+      <div><div class="n">01</div><h3>Connect</h3><p>Connect the wallet you want the print minted to. Up to 2 per wallet.</p></div>
+      <div><div class="n">02</div><h3>Find a hash</h3><p>Your browser searches for a valid hash. Keep going for extra zero bits and a rarer finish.</p></div>
+      <div><div class="n">03</div><h3>Mint</h3><p>Confirm in your wallet. The hash is saved on-chain and becomes your print.</p></div>
     </div>
   </div>
 </main>
+<footer class="site"><div class="wrap">
+  <div class="cols">
+    <div><a class="logo" href="/">HASH<span>/</span>PRINTS</a><p class="about">3,333 pixel prints on Ethereum, each drawn from a proof-of-work hash found by its minter.</p></div>
+    <ul><li><a href="/">About</a></li><li><a href="collection.html">Collection</a></li><li><a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Contract</a></li><li><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X @hashprintsnft</a></li></ul>
+  </div>
+  <div class="legal"><span>© 2026 HashPrints</span><span>Ethereum · ERC-721</span></div>
+</div></footer>
 <script src="vendor/ethers-6.umd.min.js"></script>
 <script src="wallet.js"></script>
 <script src="hashprints.js"></script>
