@@ -18,7 +18,7 @@
   footer.site { margin-top: 0; }
   .page-head { padding: 72px 0 80px; }
   .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 72px; align-items: start; }
-  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; gap: 36px; } .page-head { padding: 48px 0 56px; } }
+  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); gap: 36px; } .page-head { padding: 40px 0 56px; } h1 { font-size: clamp(38px, 11vw, 56px); } .lede { font-size: 16px; } .card { padding: 4px 18px; } .facts { font-size: 13px; } }
   h1 { font-size: clamp(48px, 7vw, 84px); line-height: .96; letter-spacing: -.045em; margin: 0 0 22px; }
   .badge { display: inline-flex; align-items: center; gap: 10px; font: 500 12px "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 7px 14px; margin-bottom: 28px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
   .badge i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
@@ -70,7 +70,7 @@
   .result td { text-align: right; }
   .gold { color: var(--gold); font-weight: 700; }
   .notlive { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 22px; color: var(--text-2); font-size: 15px; }
-  .fins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .fins { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
   .fin { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 14px 22px; position: relative; overflow: hidden; }
   .fin .art { background: var(--bg); padding: 10px; border: 1px solid var(--line); }
   .fin .top { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 6px 6px; }
@@ -83,8 +83,8 @@
   .fin.holo { border-color: color-mix(in srgb, var(--holo) 60%, var(--line)); box-shadow: 0 0 70px -18px var(--holo); }
   .fin.holo h3, .fin.holo .odds { color: var(--holo); }
   .fin.holo::before { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, color-mix(in srgb, var(--holo) 14%, transparent) 50%, transparent 70%); pointer-events: none; }
-  @media (max-width: 860px) { .fins { grid-template-columns: 1fr; max-width: 420px; } }
-  .runs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; align-items: end; }
+  @media (max-width: 860px) { .fins { grid-template-columns: minmax(0, 1fr); max-width: 420px; margin: 0 auto; } }
+  .runs { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 10px; align-items: end; }
   .run { text-align: center; }
   .run .fill { height: 150px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); position: relative; overflow: hidden; }
   .run:nth-child(3) .fill, .run:nth-child(4) .fill { height: 170px; } .run:nth-child(5) .fill, .run:nth-child(6) .fill { height: 190px; }
@@ -96,13 +96,13 @@
   .run.now b { color: var(--accent-fg); }
   .run-note { margin: 28px 0 0; font: 13px "JetBrains Mono", monospace; color: var(--text-2); }
   @media (max-width: 700px) { .runs { grid-template-columns: repeat(5, 1fr); row-gap: 22px; } .run .fill { height: 90px !important; } }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
   .steps > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 30px 26px; }
   .steps .n { font: 700 12px "JetBrains Mono", monospace; color: var(--accent-fg); letter-spacing: .1em; margin-bottom: 40px; display: flex; justify-content: space-between; }
   .steps .n span { color: var(--muted); font-weight: 400; }
   .steps h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
   .steps p { margin: 0; color: var(--text-2); font-size: 15px; }
-  @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) { .steps { grid-template-columns: minmax(0, 1fr); } .steps > div { padding: 22px 20px; } .steps .n { margin-bottom: 18px; } }
 </style>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HashPrints">

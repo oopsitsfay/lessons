@@ -172,6 +172,24 @@
   .tabs button.on { background: var(--text); color: var(--bg); }
   .tabs button.on em { color: var(--bg); opacity: .6; }
   @media (max-width: 560px) { .tabs { width: 100%; justify-content: space-between; } .tabs button { padding: 8px 10px; font-size: 13px; } .tabs button em { display: none; } }
+  @media (max-width: 640px) {
+    .head { gap: 14px; }
+    .head .who { min-width: 0; flex: 1 1 0; }
+    h1 { font-size: 34px; }
+    .meta { gap: 8px 12px; font-size: 12px; }
+    .head .actions { width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 0; }
+    .head .actions > * { width: 100%; padding: 12px 8px; font-size: 10.5px; }
+    .desc { font-size: 15px; margin-top: 18px; }
+    .stats { margin-top: 22px; }
+    .stats div { padding: 14px 16px; }
+    .tabs { margin-top: 32px; }
+    .toolbar { padding: 14px 0; }
+    .hsum div { padding: 14px 16px; }
+    .hsum b { font-size: 16px; }
+    .hsum span { letter-spacing: .08em; }
+    .card .info { padding: 9px 10px 10px; }
+    .card .name { font-size: 14px; }
+  }
   .card canvas { transition: transform .35s ease; }
   .card:hover canvas { transform: scale(1.045); }
   .card:has(.tag.gold) { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); box-shadow: 0 0 40px -18px var(--gold); }
@@ -186,7 +204,7 @@
   /* holders */
   .hsum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0 12px; }
   .hsum div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; }
-  .hsum b { display: block; font: 700 22px "JetBrains Mono", monospace; letter-spacing: -.02em; }
+  .hsum b { display: block; font: 700 22px "JetBrains Mono", monospace; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .hsum span { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   @media (max-width: 760px) { .hsum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .hdist { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; margin: 0 0 28px; }
