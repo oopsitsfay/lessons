@@ -236,16 +236,15 @@
   @media (max-width: 860px) { .sim { grid-template-columns: 1fr; } .sim-controls { border-right: 0; border-bottom: 1px solid var(--line); padding: 24px; } .sim-out { padding: 24px; } }
 
   /* trust */
-  .trust { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 64px; }
+  .trust { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 64px; }
   .trust .panel { padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; }
   .trust .ic { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center; color: var(--accent); margin-bottom: 8px; }
   .trust h3 { font-size: 17px; margin: 0; }
   .trust p { font-size: 14px; color: var(--text-2); margin: 0; flex: 1; }
   .trust a.more { font: 600 12px "JetBrains Mono", monospace; color: var(--text); text-decoration: none; letter-spacing: .04em; }
   .trust a.more:hover { color: var(--accent); }
-  @media (max-width: 960px) { .trust { grid-template-columns: 1fr 1fr; } }
-  @media (max-width: 560px) { .trust { grid-template-columns: 1fr; } }
-  .addr { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; margin-bottom: 16px; flex-wrap: wrap; }
+  @media (max-width: 960px) { .trust { grid-template-columns: 1fr; } }
+    .addr { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; margin-bottom: 16px; flex-wrap: wrap; }
   .addr .k { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .addr .v { font: 500 14px "JetBrains Mono", monospace; word-break: break-all; }
 
@@ -357,7 +356,7 @@
   <div class="wrap">
     <div class="sec-head">
       <div><div class="label"><b>01</b> About</div><h2>No reveal.<br>No pre-made art.</h2></div>
-      <p>The art doesn't exist until someone mines it. Every print is rendered from the keccak256 hash its minter found, and the renderer is open source, so anyone can redraw any token from its on-chain seed.</p>
+      <p>The art doesn't exist until someone mines it. Every print is rendered from the keccak256 hash its minter found, and the drawing code runs right here in your browser, so anyone can redraw any token from its on-chain seed.</p>
     </div>
     <div class="cols-2">
       <div class="about-copy">
@@ -535,7 +534,6 @@
     </div>
     <div class="trust">
       <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg></div><h3>Verified source</h3><p>The exact source code is published and matched on Etherscan and Sourcify.</p><a class="more" href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Read the code →</a></div>
-      <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4L1 8l4 4M11 4l4 4-4 4"/></svg></div><h3>Open renderer</h3><p>The art is drawn by open-source code from each token's on-chain seed. Anyone can redraw any print.</p><a class="more" href="https://github.com/oopsitsfay/lessons/tree/claude/fervent-babbage-e0f7cf/hashprints" target="_blank" rel="noopener">View the repo →</a></div>
       <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h12M2 11h12M5 2v12M11 2v12"/></svg></div><h3>Seaport trading</h3><p>Buying, selling and offers settle on Seaport 1.6, the same exchange contract OpenSea uses.</p><a class="more" href="collection.html">Open the market →</a></div>
       <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z"/></svg></div><h3>No secrets, ever</h3><p>We never ask for a recovery phrase, private key or password, and never message you first.</p><a class="more" href="https://x.com/hashprintsnft" target="_blank" rel="noopener">Official X →</a></div>
     </div>
@@ -604,8 +602,8 @@
         <p class="about">3,333 generative pixel prints on Ethereum, each drawn from a proof-of-work hash found by its minter.</p>
       </div>
       <div><h4>Project</h4><ul><li><a href="mint.html">Mint</a></li><li><a href="collection.html">Collection</a></li><li><a href="#art">The art</a></li><li><a href="#faq">FAQ</a></li></ul></div>
-      <div><h4>Official</h4><ul><li><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X @hashprintsnft</a></li><li><a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Contract on Etherscan</a></li><li><a href="https://github.com/oopsitsfay/lessons/tree/claude/fervent-babbage-e0f7cf/hashprints" target="_blank" rel="noopener">Source code</a></li></ul></div>
-      <div><h4>Safety</h4><ul><li><a href="/.well-known/security.txt">Report a problem</a></li><li><a href="https://github.com/oopsitsfay/lessons/blob/claude/fervent-babbage-e0f7cf/hashprints/SECURITY.md" target="_blank" rel="noopener">Security notes</a></li></ul></div>
+      <div><h4>Official</h4><ul><li><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X @hashprintsnft</a></li><li><a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Contract on Etherscan</a></li></ul></div>
+      <div><h4>Safety</h4><ul><li><a href="/.well-known/security.txt">Report a problem</a></li><li><a href="#trust">Verify the contract</a></li></ul></div>
     </div>
     <p class="safety">Official contract: <a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">0x71450bBb4408b38DC69E2f110f3ffEc906cce985</a>. HashPrints will never ask for your recovery phrase, private key or password, never messages you first, and only mints and trades on this site. The only official account is <a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">@hashprintsnft</a> on X. Anything else using the name is not us.</p>
     <div class="legal"><span>© 2026 HashPrints</span><span>ETH price reference: Oct 12, 2026</span></div>
