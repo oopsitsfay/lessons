@@ -219,23 +219,39 @@
   }
 
   // ------------------------------------------------------------ activity + holders
+  let actKind = 'all';
+  const chip = (x) => (x === ZERO ? '<span class="wchip none">–</span>'
+    : `<a class="wchip" href="${walletUrl(x)}"><span class="dot" style="background:linear-gradient(135deg,#${x.slice(2, 8)},#${x.slice(-6)})"></span>${esc(who(x))}</a>`);
+  const statCard = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
+
   function renderActivity() {
     const byId = new Map(prints.map((p) => [p.id, p]));
-    const rows = data.activity.filter((a) => !owner || same(a.from, owner) || same(a.to, owner));
+    const all = data.activity.filter((a) => !owner || same(a.from, owner) || same(a.to, owner));
+    const count = (k) => all.filter((a) => a.kind === k).length;
+    const vol = all.filter((a) => a.kind === 'sale').reduce((n, a) => n + BigInt(a.price || 0), 0n);
+    const day = all.filter((a) => a.time > Date.now() / 1000 - 86400).length;
+    $('actStats').innerHTML = statCard(count('mint').toLocaleString(), 'Mints') + statCard(count('sale').toLocaleString(), 'Sales')
+      + statCard(eth(vol), 'Sale volume') + statCard(day.toLocaleString(), 'Events · 24h');
+    for (const btn of $('actFilter').querySelectorAll('button')) {
+      btn.classList.toggle('on', btn.dataset.k === actKind);
+      btn.onclick = () => { actKind = btn.dataset.k; renderActivity(); };
+    }
+    const rows = actKind === 'all' ? all : all.filter((a) => a.kind === actKind);
     const body = $('activity');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="5"><div class="empty" style="margin:16px 0">No activity yet.</div></td></tr>';
+      body.innerHTML = `<tr><td colspan="5"><div class="empty" style="margin:16px 0">${all.length ? 'Nothing of this kind yet.' : 'No activity yet.'}</div></td></tr>`;
       return;
     }
     body.replaceChildren(...rows.map((a) => {
       const p = byId.get(a.id);
       const tr = document.createElement('tr');
-      const addr = (x) => (x === ZERO ? '<span style="color:var(--muted)">–</span>' : `<a class="addr" href="${walletUrl(x)}">${esc(who(x))}</a>`);
-      const evName = a.kind === 'mint' ? 'Minted' : a.kind === 'sale' ? `Sale · ${esc(eth(a.price))}${a.currency === 'WETH' ? ' WETH' : ''}` : 'Transfer';
-      tr.innerHTML = `<td><span class="ev ${a.kind}">${evName}</span></td>`
-        + '<td class="itemcell"></td>'
-        + `<td class="hide-sm">${addr(a.from)}</td><td>${addr(a.to)}</td>`
-        + `<td class="num"><a href="${data.explorer}/tx/${a.tx}" target="_blank" rel="noopener" title="${new Date(a.time * 1000).toLocaleString()}">${ago(a.time)} ↗</a></td>`;
+      const ev = a.kind === 'mint' ? '<span class="pill mint"><i></i>Mint</span>'
+        : a.kind === 'sale' ? `<span class="pill sale"><i></i>Sale</span><div class="amt" style="margin-top:6px">${esc(eth(a.price, a.currency === 'WETH' ? 'WETH' : 'ETH'))}</div>`
+          : '<span class="pill transfer"><i></i>Transfer</span>';
+      const when = `<a class="when" href="${data.explorer}/tx/${a.tx}" target="_blank" rel="noopener" title="${new Date(a.time * 1000).toLocaleString()}">${ago(a.time)} ↗</a>`;
+      tr.innerHTML = `<td>${ev}<div class="mob-when">${when}</div></td><td class="itemcell"></td>`
+        + `<td class="hide-sm">${chip(a.from)}</td><td>${chip(a.to)}</td>`
+        + `<td class="num hide-sm">${when}</td>`;
       const cell = tr.querySelector('.itemcell');
       const link = document.createElement('a');
       link.className = 'item';
@@ -305,15 +321,24 @@
   // ------------------------------------------------------------ offers + wallet tools
   function renderOffers() {
     const byId = new Map(prints.map((p) => [p.id, p]));
-    const rows = market.offers.filter((o) => !owner || same(o.maker, owner) || (o.tokenId !== null && same(byId.get(o.tokenId)?.owner, owner)));
+    const rows = market.offers.filter((o) => !owner || same(o.maker, owner) || (o.tokenId !== null && same(byId.get(o.tokenId)?.owner, owner)))
+      .slice().sort((a, b) => (BigInt(b.price) > BigInt(a.price) ? 1 : BigInt(b.price) < BigInt(a.price) ? -1 : 0));
+    const top = rows.length ? BigInt(rows[0].price) : 0n;
+    const sum = rows.reduce((n, o) => n + BigInt(o.price), 0n);
+    $('offerStats').innerHTML = statCard(rows.length ? esc(eth(top, 'WETH')) : '–', 'Top offer')
+      + statCard(rows.length.toLocaleString(), 'Open offers')
+      + statCard(rows.filter((o) => o.tokenId === null).length.toLocaleString(), 'Collection offers')
+      + statCard(esc(eth(sum, 'WETH')), 'Total offered');
     $('offersNote').textContent = market.enabled
       ? `Offers are paid in WETH and include ${market.fees.map((f) => `the ${f.bps / 100}% ${f.label.toLowerCase()}`).join(' and ') || 'no fees'}. Owners accept them from the print's page; a collection offer can be accepted with any print.`
       : '';
+    $('offersNote').classList.toggle('hidden', !market.enabled);
     const body = $('offersBody');
     if (!rows.length) {
       body.innerHTML = '<tr><td colspan="5"><div class="empty" style="margin:16px 0">No offers yet.</div></td></tr>';
       return;
     }
+    const now = Date.now() / 1000;
     body.replaceChildren(...rows.map((o) => {
       const p = o.tokenId === null ? null : byId.get(o.tokenId);
       const tr = document.createElement('tr');
@@ -325,11 +350,14 @@
         a.append(thumb(p), label(p));
         cell.appendChild(a);
       } else {
-        cell.innerHTML = '<b>Any print</b><div class="count" style="margin:0">collection offer</div>';
+        cell.innerHTML = '<div class="anyprint"><span class="stack"></span><span><b>Any print</b><span class="pill coll" style="margin-top:4px"><i></i>Collection offer</span></span></div>';
+        cell.querySelector('.stack').append(...prints.slice(-4).map(thumb));
       }
       tr.appendChild(cell);
-      tr.insertAdjacentHTML('beforeend', `<td class="num"><b>${esc(eth(o.price, 'WETH'))}</b></td><td class="hide-sm"><a class="addr" href="${walletUrl(o.maker)}">${esc(who(o.maker))}</a></td>`
-        + `<td class="num hide-sm">${new Date(o.endTime * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</td><td class="num"></td>`);
+      const left = o.endTime - now;
+      const ends = left < 86400 ? `<span class="soon">${Math.max(1, Math.round(left / 3600))}h left</span>` : new Date(o.endTime * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      tr.insertAdjacentHTML('beforeend', `<td class="num"><span class="amt">${esc(eth(o.price, 'WETH'))}</span></td><td class="hide-sm">${chip(o.maker)}</td>`
+        + `<td class="num hide-sm"><span class="when">${ends}</span></td><td class="num"></td>`);
       const act = tr.lastElementChild;
       if (same(o.maker, account)) {
         const b = document.createElement('button');
@@ -344,6 +372,7 @@
       return tr;
     }));
   }
+
 
   // Run a wallet action from a small button, showing progress in a toast.
   async function runTx(button, fn, done) {
