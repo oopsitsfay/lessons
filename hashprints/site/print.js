@@ -36,13 +36,13 @@
         <div class="frame"><canvas id="c"></canvas></div>
         <div>
           <h1>${heading}</h1>
-          <div class="sub">seed ${seed}</div>
+          <div class="pills" id="pills"></div>
+          <div class="seedbox"><span>Seed</span><code>${seed}</code></div>
           <div class="trade" id="trade" hidden></div>
-          <table id="own" hidden></table>
-          <div id="offers" hidden></div>
-          <h2>Traits</h2>
-          <table id="t"></table>
-          <div id="histWrap" hidden><h2>History</h2><table class="hist" id="hist"></table></div>
+          <section class="card" id="ownCard" hidden><h2>Ownership</h2><table id="own"></table></section>
+          <section class="card" id="offers" hidden></section>
+          <section class="card"><h2>Traits</h2><div class="tgrid" id="t"></div></section>
+          <section class="card" id="histWrap" hidden><h2>History</h2><ol class="timeline" id="hist"></ol></section>
           <div class="btns"><button id="png" type="button">PNG</button><button id="svg" type="button">SVG</button><a class="btn" href="${withC('collection.html')}">Collection</a><a class="btn" href="/#art">About the art</a></div>
         </div>
       </div>`;
@@ -64,7 +64,21 @@
       return td;
     };
     const t = document.getElementById('t');
-    for (const [k, v] of rows) addRow(t, k, v, k === 'Rarity' && v !== 'Common' ? 'gold' : '');
+    for (const [k, v] of rows) {
+      const cell = document.createElement('div');
+      const kk = document.createElement('span');
+      kk.textContent = k;
+      const vv = document.createElement('b');
+      vv.textContent = v;
+      if (k === 'Rarity' && v !== 'Common') vv.className = v === 'Holo Foil' ? 'holo' : 'gold';
+      cell.append(kk, vv);
+      t.appendChild(cell);
+    }
+    const pill = (text, cls = '') => `<span class="pill ${cls}"><i></i>${text}</span>`;
+    const tr8 = art.traits;
+    document.getElementById('pills').innerHTML = (id >= 1 && id <= shape.artistProofs ? pill('Artist proof', 'ap') : '')
+      + (tr8.Rarity !== 'Common' ? pill(tr8.Rarity, tr8.Rarity === 'Holo Foil' ? 'holo' : 'gold') : pill('Common'))
+      + pill(tr8.Edition) + pill(tr8.Style) + pill(`${d} bits`);
 
     // Owner, minter and history, when the token is on chain and matches this seed.
     if (token && token.seed.toLowerCase() === seed) {
@@ -76,10 +90,18 @@
         if (external) { a.target = '_blank'; a.rel = 'noopener'; }
         return a;
       };
-      const wallet = (a) => link(short(a), withC(`collection.html?owner=${a}`));
+      const wallet = (a) => {
+        const el = link('', withC(`collection.html?owner=${a}`));
+        el.className = 'wchip';
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.style.background = `linear-gradient(135deg,#${a.slice(2, 8)},#${a.slice(-6)})`;
+        el.append(dot, short(a));
+        return el;
+      };
       const when = (sec) => new Date(sec * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
       const own = document.getElementById('own');
-      own.hidden = false;
+      document.getElementById('ownCard').hidden = false;
       addRow(own, 'Owner', wallet(token.owner));
       addRow(own, 'Minted by', wallet(token.minter));
       addRow(own, 'Minted', link(`${when(token.time)} ↗`, `${chain.explorer}/tx/${token.tx}`, true));
@@ -90,10 +112,24 @@
         const hist = document.getElementById('hist');
         document.getElementById('histWrap').hidden = false;
         for (const ev of events) {
-          const span = document.createElement('span');
-          const priced = ev.kind === 'sale' ? `${HPTrade.eth(ev.price)}${ev.currency === 'WETH' ? ' (WETH)' : ''} · ` : '';
-          span.append(priced, ev.kind === 'mint' ? 'Minted to ' : `${short(ev.from)} → `, wallet(ev.to), ' · ', link(when(ev.time), `${chain.explorer}/tx/${ev.tx}`, true));
-          addRow(hist, ev.kind === 'mint' ? 'Mint' : ev.kind === 'sale' ? 'Sale' : 'Transfer', span);
+          const li = document.createElement('li');
+          li.className = ev.kind;
+          const head = document.createElement('div');
+          head.className = 'th';
+          head.innerHTML = `<span class="pill ${ev.kind}"><i></i>${ev.kind === 'mint' ? 'Mint' : ev.kind === 'sale' ? 'Sale' : 'Transfer'}</span>`;
+          if (ev.kind === 'sale') {
+            const amt = document.createElement('b');
+            amt.className = 'amt';
+            amt.textContent = HPTrade.eth(ev.price, ev.currency === 'WETH' ? 'WETH' : 'ETH');
+            head.appendChild(amt);
+          }
+          head.appendChild(link(`${when(ev.time)} ↗`, `${chain.explorer}/tx/${ev.tx}`, true));
+          const who = document.createElement('div');
+          who.className = 'tw';
+          if (ev.kind === 'mint') who.append('Minted to ', wallet(ev.to));
+          else who.append(wallet(ev.from), ' → ', wallet(ev.to));
+          li.append(head, who);
+          hist.appendChild(li);
         }
       }
       trade(token, chain).catch(() => {});
@@ -252,8 +288,12 @@
         for (const h of ['Offer', 'From', 'Ends', '']) head.appendChild(el('th', {}, h));
         for (const o of rows) {
           const tr = table.insertRow();
-          tr.insertCell().append(el('b', {}, eth(o.price, 'WETH')), o.tokenId === null ? el('div', { class: 'sub' }, 'collection offer') : '');
-          tr.insertCell().append(same(o.maker, me) ? 'you' : el('a', { href: `collection.html?${key === 'test' ? 'c=test&' : ''}owner=${o.maker}` }, short(o.maker)));
+          tr.insertCell().append(el('b', { class: 'amt' }, eth(o.price, 'WETH')), o.tokenId === null ? el('div', { class: 'sub' }, 'collection offer') : '');
+          const mk = el('a', { class: 'wchip', href: `collection.html?${key === 'test' ? 'c=test&' : ''}owner=${o.maker}` });
+          const dot = el('span', { class: 'dot' });
+          dot.style.background = `linear-gradient(135deg,#${o.maker.slice(2, 8)},#${o.maker.slice(-6)})`;
+          mk.append(dot, same(o.maker, me) ? 'you' : short(o.maker));
+          tr.insertCell().append(mk);
           tr.insertCell().append(ends(o.endTime));
           const cell = tr.insertCell();
           if (mine) {

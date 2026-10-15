@@ -199,7 +199,7 @@
       const page = `print.html?${key === 'test' ? 'c=test&' : ''}id=${id}&seed=${ev.args.seed}&d=${difficulty}`;
       $('resultTable').innerHTML = [
         ['Token', `${shape.name} #${id}`],
-        ['Rarity', art.traits.Rarity === 'Common' ? 'Common' : `<span class="gold">${art.traits.Rarity}</span>`],
+        ['Rarity', `<span class="pill ${art.traits.Rarity === 'Holo Foil' ? 'holo' : art.traits.Rarity === 'Gold Leaf' ? 'gold' : ''}"><i></i>${art.traits.Rarity}</span>`],
         ['Style', art.traits.Style],
         ['Edition', art.traits.Edition],
         ['Transaction', txLink(receipt.hash)],
