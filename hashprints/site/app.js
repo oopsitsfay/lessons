@@ -26,6 +26,21 @@
     syncToggle();
   };
 
+  // ------------------------------------------------------------ live mint status
+  if ($('liveMinted')) {
+    fetch('/api/collection?c=main').then((r) => (r.ok ? r.json() : null)).then((s) => {
+      if (!s || !s.deployed) return;
+      $('liveMinted').textContent = `${fmt(s.total)} / ${fmt(s.max)}`;
+      $('liveMeter').style.width = `${Math.max(1, (100 * s.total) / s.max)}%`;
+      if (s.live) {
+        $('liveBadge').classList.add('live');
+        $('liveText').textContent = `Minting live · run ${s.run + 1} of ${s.runs} · ${s.difficulty} bits`;
+      } else {
+        $('liveText').textContent = 'Mint opening soon · Ethereum';
+      }
+    }).catch(() => {});
+  }
+
   // ------------------------------------------------------------ painting
   function paint(canvas, art) {
     canvas.width = canvas.height = art.size;
