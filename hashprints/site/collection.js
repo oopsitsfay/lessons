@@ -105,7 +105,7 @@
     $('title').textContent = shape.name;
     const status = data.total >= data.max ? '<span class="badge">Sold out</span>'
       : data.live ? '<span class="badge live"><i></i>Minting now</span>' : '<span class="badge off"><i></i>Not live</span>';
-    $('meta').innerHTML = `${status}<a href="${explorer}/address/${data.address}#code" target="_blank" rel="noopener">${short(data.address)} ↗</a><span>${data.chainId === 1 ? 'Ethereum' : 'Sepolia'}</span>`;
+    $('meta').innerHTML = `${status}<a href="${explorer}/address/${data.address}#code" target="_blank" rel="noopener">${short(data.address)} ↗</a><span>${data.chainId === 1 ? 'Ethereum' : 'Sepolia'}</span><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">@hashprintsnft ↗</a>`;
     $('actions').innerHTML = `${market.enabled ? '<button class="btn ghost" type="button" id="offerBtn">Make collection offer</button>' : ''}<a class="btn" href="${withC('mint.html')}">Mint · ${esc(eth(data.price))}</a>`;
     if (market.enabled) $('offerBtn').onclick = openCollectionOffer;
     const holders = new Set(prints.map((p) => p.owner.toLowerCase())).size;
