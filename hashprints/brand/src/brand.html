@@ -1,0 +1,170 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: JBM; font-weight: 400; src: url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2); }
+  @font-face { font-family: JBM; font-weight: 700; src: url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-700-normal.woff2); }
+  @font-face { font-family: JBM; font-weight: 800; src: url(node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-800-normal.woff2); }
+  @font-face { font-family: SG; font-weight: 500; src: url(node_modules/@fontsource/space-grotesk/files/space-grotesk-latin-500-normal.woff2); }
+  @font-face { font-family: SG; font-weight: 700; src: url(node_modules/@fontsource/space-grotesk/files/space-grotesk-latin-700-normal.woff2); }
+  html, body { margin: 0; background: #0b0b10; }
+  canvas { display: block; }
+</style></head>
+<body><canvas id="c"></canvas>
+<script src="hashprints.js"></script>
+<script>
+const INK = '#0b0b10', INK2 = '#14141c', RULE = '#2a2a38', TEXT = '#f0efec', MUTED = '#8b8a9c', LIME = '#c6ff00', PINK = '#ff48b0';
+const HP = window.HashPrints;
+
+function setup(w, h) {
+  const c = document.getElementById('c');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = INK; g.fillRect(0, 0, w, h);
+  return g;
+}
+
+// A print, pixel-exact: each of the 32x32 cells becomes a whole number of pixels.
+function print(g, seed, x, y, size, frame = true) {
+  const art = HP.render(seed, 16);
+  const cell = Math.floor(size / art.size);
+  const s = cell * art.size;
+  const ox = Math.round(x + (size - s) / 2), oy = Math.round(y + (size - s) / 2);
+  art.grid.forEach((row, yy) => row.forEach((v, xx) => { g.fillStyle = art.palette[v]; g.fillRect(ox + xx * cell, oy + yy * cell, cell, cell); }));
+  if (frame) { g.strokeStyle = RULE; g.lineWidth = Math.max(1, Math.round(size / 160)); g.strokeRect(ox - g.lineWidth / 2, oy - g.lineWidth / 2, s + g.lineWidth, s + g.lineWidth); }
+  return { art, x: ox, y: oy, s };
+}
+
+// Background: faint columns of hex hashes, the raw material every print comes from.
+function hashField(g, w, h, size, alpha = 0.11, seedText = 'hashprints') {
+  g.save();
+  g.font = `400 ${size}px JBM`;
+  g.fillStyle = `rgba(139,138,156,${alpha})`;
+  let n = 0;
+  const lineH = Math.round(size * 1.6);
+  for (let y = lineH; y < h + lineH; y += lineH) {
+    let line = '';
+    while (g.measureText(line).width < w + 200) line += hex(seedText + n++) + '  ';
+    g.fillText(line, -((n * 37) % 300), y);
+  }
+  g.restore();
+}
+function hex(s) {
+  let h = 2166136261 >>> 0, out = '0x0000';
+  for (let i = 0; i < 60; i++) { h ^= s.charCodeAt(i % s.length) + i; h = Math.imul(h, 16777619) >>> 0; out += (h & 15).toString(16); }
+  return out;
+}
+
+function wordmark(g, x, y, size, align = 'left') {
+  g.save();
+  g.font = `800 ${size}px JBM`;
+  g.textBaseline = 'alphabetic';
+  const parts = [['HASH', TEXT], ['/', LIME], ['PRINTS', TEXT]];
+  const total = parts.reduce((s, [t]) => s + g.measureText(t).width, 0);
+  let cx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x;
+  for (const [t, col] of parts) { g.fillStyle = col; g.fillText(t, cx, y); cx += g.measureText(t).width; }
+  g.restore();
+  return total;
+}
+
+function text(g, t, x, y, { size = 20, weight = 500, color = MUTED, font = 'SG', align = 'left', spacing = 0 } = {}) {
+  g.save();
+  g.font = `${weight} ${size}px ${font}`;
+  g.fillStyle = color; g.textAlign = align;
+  if ('letterSpacing' in g) g.letterSpacing = `${spacing}px`;
+  g.fillText(t, x, y);
+  g.restore();
+}
+
+function pill(g, t, x, y, size, color = LIME) {
+  g.save();
+  g.font = `700 ${size}px JBM`;
+  if ('letterSpacing' in g) g.letterSpacing = `${size * 0.12}px`;
+  const w = g.measureText(t).width + size * 1.4, h = size * 2;
+  g.strokeStyle = color; g.lineWidth = Math.max(2, size / 7);
+  g.strokeRect(x, y - h + size * 0.55, w, h);
+  g.fillStyle = color; g.fillText(t, x + size * 0.7, y);
+  g.restore();
+  return w;
+}
+
+const DESIGNS = {
+  // Profile picture: the Gold Leaf artist proof, centred so a circle crop keeps the whole print.
+  'pfp-print'(S) {
+    const g = setup(1000, 1000);
+    hashField(g, 1000, 1000, 16, 0.08, 'pfp');
+    print(g, S.ap[1], 168, 168, 664);
+  },
+  // Profile picture: the wordmark as a monogram.
+  'pfp-mark'(S) {
+    const g = setup(1000, 1000);
+    hashField(g, 1000, 1000, 16, 0.09, 'mark');
+    g.font = '800 330px JBM';
+    const parts = [['H', TEXT], ['/', LIME], ['P', TEXT]];
+    const total = parts.reduce((s, [t]) => s + g.measureText(t).width, 0);
+    let x = 500 - total / 2;
+    for (const [t, col] of parts) { g.fillStyle = col; g.fillText(t, x, 620); x += g.measureText(t).width; }
+    text(g, '0x0000…', 500, 730, { size: 40, weight: 700, font: 'JBM', color: MUTED, align: 'center' });
+  },
+  // X / Twitter header, 1500x500. Safe area: the middle ~1500x360; the profile picture covers the bottom-left.
+  'x-header'(S) {
+    const g = setup(1500, 500);
+    hashField(g, 1500, 500, 14, 0.1, 'x');
+    const seeds = [S.ap[0], S.mix[1], S.ap[1], S.mix[4], S.ap[2]];
+    seeds.forEach((s, i) => print(g, s, 760 + i * 142, 150, 128));
+    g.fillStyle = 'rgba(11,11,16,0.0)';
+    wordmark(g, 90, 230, 76);
+    text(g, '3,333 prints pressed from proof of work.', 92, 285, { size: 30, weight: 500, color: TEXT });
+    text(g, 'Grind a hash. The hash becomes the plate.', 92, 325, { size: 24, color: MUTED });
+    pill(g, 'ETHEREUM', 760, 360, 18);
+    pill(g, '0.000315 ETH', 900, 360, 18, MUTED);
+  },
+  // OpenSea / marketplace banner 2800x700 (shown at 1400x350). Prints full-bleed, wordmark in a centred panel.
+  'banner-marketplace'(S) {
+    const g = setup(2800, 700);
+    const seeds = [...S.mix.slice(0, 6), S.ap[0], S.ap[1], S.ap[2], ...S.mix.slice(6, 12)];
+    const size = 350, gap = 0;
+    const row = (y, list, off) => list.forEach((s, i) => print(g, s, off + i * (size + gap), y, size, false));
+    row(0, seeds.slice(0, 9), -175);
+    row(350, seeds.slice(6, 15), 0);
+    g.fillStyle = 'rgba(11,11,16,0.68)'; g.fillRect(0, 0, 2800, 700);
+    g.fillStyle = INK; g.fillRect(860, 190, 1080, 320);
+    g.strokeStyle = RULE; g.lineWidth = 3; g.strokeRect(860, 190, 1080, 320);
+    wordmark(g, 1400, 360, 120, 'center');
+    text(g, '3,333 PRINTS · PROOF OF WORK · ETHEREUM', 1400, 440, { size: 34, weight: 700, font: 'JBM', color: MUTED, align: 'center', spacing: 4 });
+  },
+  // Collection card / featured image 1200x800.
+  'featured'(S) {
+    const g = setup(1200, 800);
+    hashField(g, 1200, 800, 14, 0.09, 'featured');
+    [S.ap[0], S.ap[1], S.ap[2]].forEach((s, i) => print(g, s, 90 + i * 350, 110, 320));
+    wordmark(g, 90, 600, 72);
+    text(g, '3,333 pixel prints. Mint by finding a hash.', 92, 660, { size: 30, color: TEXT });
+    text(g, 'hashprints.vercel.app', 92, 712, { size: 24, weight: 700, font: 'JBM', color: LIME });
+  },
+  // Link preview (Open Graph / X card) 1200x630, also served by the site as og.png.
+  'og'(S) {
+    const g = setup(1200, 630);
+    hashField(g, 1200, 630, 14, 0.09, 'og');
+    print(g, S.ap[1], 690, 95, 440);
+    wordmark(g, 70, 250, 64);
+    text(g, '3,333 prints pressed', 72, 330, { size: 40, weight: 700, color: TEXT });
+    text(g, 'from proof of work.', 72, 380, { size: 40, weight: 700, color: TEXT });
+    text(g, 'Your browser finds the hash.', 72, 445, { size: 26, color: MUTED });
+    text(g, 'The hash draws the print.', 72, 480, { size: 26, color: MUTED });
+    pill(g, 'MINT ON ETHEREUM', 72, 560, 20);
+  },
+  // Discord server banner 960x540.
+  'discord-banner'(S) {
+    const g = setup(960, 540);
+    S.mix.slice(10, 34).forEach((s, i) => print(g, s, (i % 6) * 160, Math.floor(i / 6) * 160 - 50, 160, false));
+    g.fillStyle = 'rgba(11,11,16,0.78)'; g.fillRect(0, 0, 960, 540);
+    wordmark(g, 480, 280, 78, 'center');
+    text(g, 'PROOF-OF-WORK PIXEL PRINTS', 480, 330, { size: 22, weight: 700, font: 'JBM', color: MUTED, align: 'center', spacing: 3 });
+  },
+};
+
+window.draw = async (name, seeds) => { await document.fonts.load('800 20px JBM'); await document.fonts.load('700 20px JBM'); await document.fonts.load('500 20px SG'); await document.fonts.load('700 20px SG'); DESIGNS[name](seeds); return true; };
+window.DESIGN_NAMES = Object.keys(DESIGNS);
+</script>
+</body></html>
