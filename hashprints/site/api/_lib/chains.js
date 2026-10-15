@@ -65,4 +65,9 @@ function provider(chainId) {
   return new FailoverProvider(CHAINS[chainId].rpcs, network);
 }
 
-module.exports = { CHAINS, provider };
+// One node only, for cross-checking answers.
+function singleNode(chainId, url) {
+  return new FailoverProvider([url], ethers.Network.from(Number(chainId)));
+}
+
+module.exports = { CHAINS, provider, singleNode };

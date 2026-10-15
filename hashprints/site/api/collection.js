@@ -6,7 +6,7 @@ const CONFIG = process.env.HP_CONFIG ? JSON.parse(process.env.HP_CONFIG) : requi
 const HP = require('../hashprints.js');
 const M = require('../market-core.js');
 
-const { CHAINS, provider: providerFor } = require('./_lib/chains.js');
+const { CHAINS, provider: providerFor, singleNode } = require('./_lib/chains.js');
 const ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)',
   'event Pressed(uint256 indexed tokenId, address indexed minter, bytes32 seed, uint256 run, uint256 difficulty, uint256 extraBits)',
@@ -57,16 +57,39 @@ async function startBlock(cfg) {
   return tx.block_number;
 }
 
-async function scan(provider, key, cfg, latest) {
+const PRESSED = IFACE.getEvent('Pressed').topicHash;
+const pressedIn = (logs) => logs.filter((l) => l.topics[0] === PRESSED).length;
+
+// Logs since the deploy block, fetched incrementally per warm instance. Some public nodes answer
+// an old range with an empty list instead of an error, so the result is checked against the
+// contract: there must be exactly one Pressed event per minted token. If not, every node is asked
+// on its own from the start and the first complete answer wins; an incomplete one isn't cached.
+async function scan(provider, key, cfg, latest, minted) {
   const id = `${key}:${cfg.chainId}:${cfg.address.toLowerCase()}`;
   let s = scans.get(id);
   if (!s) s = { next: await startBlock(cfg), logs: [] };
   if (latest >= s.next) {
     const logs = await fetchLogs(provider, cfg.address, s.next, latest);
     s = { next: latest + 1, logs: s.logs.concat(logs) };
-    scans.set(id, s);
   }
-  return s.logs;
+  if (pressedIn(s.logs) === minted) {
+    scans.set(id, s);
+    return s.logs;
+  }
+  scans.delete(id);
+  const from = await startBlock(cfg);
+  let best = s.logs;
+  for (const url of CHAINS[cfg.chainId].rpcs) {
+    try {
+      const logs = await fetchLogs(singleNode(cfg.chainId, url), cfg.address, from, latest);
+      if (pressedIn(logs) === minted) {
+        scans.set(id, { next: latest + 1, logs });
+        return logs;
+      }
+      if (pressedIn(logs) > pressedIn(best)) best = logs;
+    } catch {}
+  }
+  return best; // incomplete; not cached, so the next request tries again
 }
 
 async function blockTimes(provider, blocks, head) {
@@ -158,10 +181,10 @@ module.exports = async (req, res) => {
     const provider = providerFor(cfg.chainId);
     const c = new ethers.Contract(cfg.address, ABI, provider);
     const head = await provider.getBlock('latest');
-    const [total, max, pressed, openedAt, price, difficulty, run, logs] = await Promise.all([
-      c.totalSupply(), c.MAX_SUPPLY(), c.pressed(), c.openedAt(), c.price(), c.difficulty(), c.currentRun(),
-      scan(provider, key, cfg, head.number),
+    const [total, max, pressed, openedAt, price, difficulty, run] = await Promise.all([
+      c.totalSupply({ blockTag: head.number }), c.MAX_SUPPLY(), c.pressed(), c.openedAt(), c.price(), c.difficulty(), c.currentRun(),
     ]);
+    const logs = await scan(provider, key, cfg, head.number, Number(total));
     const { tokens, activity } = build(logs);
     const saleOf = await findSales(provider, cfg, activity.filter((a) => a.kind === 'transfer').map((a) => a.tx));
     let volume = 0n;
