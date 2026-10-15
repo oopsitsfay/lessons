@@ -257,17 +257,49 @@
   }
 
   function renderHolders() {
-    const counts = new Map();
-    for (const p of prints) counts.set(p.owner, (counts.get(p.owner) || 0) + 1);
-    const list = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const owned = new Map();
+    for (const p of prints) {
+      const k = p.owner.toLowerCase();
+      if (!owned.has(k)) owned.set(k, { addr: p.owner, prints: [] });
+      owned.get(k).prints.push(p);
+    }
+    const list = [...owned.values()].sort((a, b) => b.prints.length - a.prints.length || a.addr.localeCompare(b.addr));
     const body = $('holders');
     if (!list.length) {
-      body.innerHTML = '<tr><td colspan="4"><div class="empty" style="margin:16px 0">No holders yet.</div></td></tr>';
+      $('holderStats').innerHTML = '';
+      $('holderDist').innerHTML = '';
+      body.innerHTML = '<tr><td colspan="5"><div class="empty" style="margin:16px 0">No holders yet.</div></td></tr>';
       return;
     }
     const total = prints.length;
-    body.innerHTML = list.map(([a, n], i) => `<tr><td class="num">${i + 1}</td><td><a class="addr" href="${walletUrl(a)}">${esc(same(a, account) ? `${short(a)} (you)` : short(a))}</a></td>`
-      + `<td class="num">${n}</td><td class="num hide-sm">${((n / total) * 100).toFixed(1)}%<span class="share"><span style="width:${(n / list[0][1]) * 100}%"></span></span></td></tr>`).join('');
+    const top10 = list.slice(0, 10).reduce((n, h) => n + h.prints.length, 0);
+    const stat = (v, k) => `<div><b>${v}</b><span>${k}</span></div>`;
+    $('holderStats').innerHTML = stat(list.length.toLocaleString(), 'Holders')
+      + stat(`${((list.length / total) * 100).toFixed(0)}%`, 'Unique owners')
+      + stat((total / list.length).toFixed(2), 'Avg per wallet')
+      + stat(`${((top10 / total) * 100).toFixed(0)}%`, 'Held by top 10');
+
+    const buckets = [['1 print', (n) => n === 1, 'var(--accent)'], ['2 prints', (n) => n === 2, 'var(--holo)'], ['3–5', (n) => n >= 3 && n <= 5, 'var(--gold)'], ['6+', (n) => n >= 6, 'var(--text-2)']]
+      .map(([k, f, c]) => ({ k, c, n: list.filter((h) => f(h.prints.length)).length })).filter((x) => x.n);
+    $('holderDist').innerHTML = `<div class="t"><span>Wallets by prints held</span><span>${list.length} wallets</span></div>`
+      + `<div class="bar">${buckets.map((x) => `<i style="width:${(x.n / list.length) * 100}%;background:${x.c}"></i>`).join('')}</div>`
+      + `<div class="keys">${buckets.map((x) => `<span style="--c:${x.c}">${x.k} · ${x.n}</span>`).join('')}</div>`;
+
+    body.replaceChildren(...list.map((h, i) => {
+      const tr = document.createElement('tr');
+      if (i < 3) tr.className = 'top';
+      const n = h.prints.length;
+      const you = same(h.addr, account);
+      tr.innerHTML = `<td class="num"><span class="rank">${String(i + 1).padStart(2, '0')}</span></td>`
+        + `<td><a class="who" href="${walletUrl(h.addr)}"><span class="dot" style="background:linear-gradient(135deg,#${h.addr.slice(2, 8)},#${h.addr.slice(-6)})"></span><span><b>${esc(short(h.addr))}</b><em>${you ? 'You' : 'View prints'}</em></span></a></td>`
+        + '<td class="hide-sm"><div class="thumbs"></div></td>'
+        + `<td class="num"><span class="held">${n}</span></td>`
+        + `<td class="num hide-sm">${((n / total) * 100).toFixed(1)}%<span class="share" style="display:inline-block;margin-left:10px;vertical-align:middle"><span style="display:block;height:100%;background:var(--accent);width:${(n / list[0].prints.length) * 100}%"></span></span></td>`;
+      const box = tr.querySelector('.thumbs');
+      for (const p of h.prints.slice(0, 5)) box.appendChild(thumb(p));
+      if (n > 5) { const more = document.createElement('small'); more.textContent = `+${n - 5}`; box.appendChild(more); }
+      return tr;
+    }));
   }
 
   // ------------------------------------------------------------ offers + wallet tools

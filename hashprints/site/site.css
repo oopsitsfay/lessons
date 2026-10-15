@@ -1,23 +1,23 @@
 /* Shared look for the mint, collection and print pages (the home page carries the same tokens inline). */
 :root {
-  --bg: #0a0a0e; --bg-2: #0f0f15; --surface: #13131a; --surface-2: #191921;
-  --line: #23232e; --line-2: #2f2f3c;
-  --text: #f2f1ec; --text-2: #b8b7c4; --muted: #7c7b8c;
-  --accent: #c6ff00; --accent-ink: #0a0a0e; --accent-soft: rgba(198, 255, 0, .10);
+  --bg: #0b0c0e; --bg-2: #101114; --surface: #141519; --surface-2: #1a1c21;
+  --line: #24262c; --line-2: #31343b;
+  --text: #f4f5f7; --text-2: #b4b8c1; --muted: #7d828d;
+  --accent: #c6ff00; --accent-fg: #c6ff00; --accent-ink: #0b0c0e; --accent-soft: rgba(198, 255, 0, .10);
   --ok: #3ddc97; --bad: #ff6b6b; --gold: #e8c45a; --holo: #b69cff;
-  --grid: rgba(255, 255, 255, .025);
+  --grid: rgba(255, 255, 255, .028);
   --shadow: 0 30px 80px -30px rgba(0, 0, 0, .7);
   --r: 4px;
   color-scheme: dark;
 }
 :root[data-theme="light"] {
-  --bg: #f4f0e6; --bg-2: #eee9dc; --surface: #ebe5d6; --surface-2: #e4dccb;
-  --line: #d6cfbd; --line-2: #c8bfab;
-  --text: #17161a; --text-2: #46423a; --muted: #7a7466;
-  --accent: #ff48b0; --accent-ink: #ffffff; --accent-soft: rgba(255, 72, 176, .10);
-  --ok: #00835a; --bad: #c62828; --gold: #a37d0c; --holo: #6a4fd8;
-  --grid: rgba(0, 0, 0, .035);
-  --shadow: 0 30px 60px -30px rgba(60, 50, 30, .35);
+  --bg: #ffffff; --bg-2: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f6;
+  --line: #e4e6eb; --line-2: #d2d6dd;
+  --text: #0b0c0e; --text-2: #434854; --muted: #767c88;
+  --accent: #c6ff00; --accent-fg: #4a6a00; --accent-ink: #0b0c0e; --accent-soft: rgba(150, 200, 0, .16);
+  --ok: #0a7a4b; --bad: #c62828; --gold: #9a7400; --holo: #5b3fd6;
+  --grid: rgba(11, 12, 14, .045);
+  --shadow: 0 24px 48px -28px rgba(15, 20, 30, .22);
   color-scheme: light;
 }
 /* Older names the page styles still use. */
@@ -26,7 +26,7 @@
 * { box-sizing: border-box; }
 html { overflow-x: hidden; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Space Grotesk", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
-a { color: inherit; text-decoration-color: var(--accent); text-underline-offset: 3px; }
+a { color: inherit; text-decoration-color: var(--accent-fg); text-underline-offset: 3px; }
 .hidden { display: none !important; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -34,7 +34,7 @@ a { color: inherit; text-decoration-color: var(--accent); text-underline-offset:
 nav.top { position: sticky; top: 0; z-index: 30; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
 nav.top .wrap { display: flex; align-items: center; gap: 28px; height: 68px; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
 nav.top .logo { font: 800 17px "JetBrains Mono", monospace; text-decoration: none; letter-spacing: -.02em; white-space: nowrap; }
-nav.top .logo span { color: var(--accent); }
+nav.top .logo span { color: var(--accent-fg); }
 nav.top .links { display: flex; gap: 26px; flex: 1; }
 nav.top .links a { text-decoration: none; color: var(--text-2); font-size: 14px; white-space: nowrap; transition: color .15s; }
 nav.top .links a:hover, nav.top .links a.on { color: var(--text); }
@@ -52,7 +52,7 @@ nav.top .nav-actions { display: flex; gap: 10px; align-items: center; margin-lef
 .page-head::after { content: ""; position: absolute; width: 640px; height: 640px; right: -200px; top: -320px; background: radial-gradient(circle, var(--accent-soft), transparent 62%); pointer-events: none; }
 .page-head > * { position: relative; z-index: 1; }
 .label { display: flex; align-items: center; gap: 12px; font: 500 12px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 18px; }
-.label b { color: var(--accent); font-weight: 700; }
+.label b { color: var(--accent-fg); font-weight: 700; }
 .label::after { content: ""; height: 1px; width: 48px; background: var(--line-2); }
 
 /* footer */
@@ -60,7 +60,7 @@ footer.site { border-top: 1px solid var(--line); background: var(--bg-2); paddin
 footer.site .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
 footer.site .cols { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; padding-bottom: 28px; }
 footer.site .logo { font: 800 16px "JetBrains Mono", monospace; text-decoration: none; }
-footer.site .logo span { color: var(--accent); }
+footer.site .logo span { color: var(--accent-fg); }
 footer.site .about { color: var(--text-2); font-size: 14px; max-width: 340px; margin: 10px 0 0; }
 footer.site ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 22px; flex-wrap: wrap; }
 footer.site ul a { color: var(--text-2); text-decoration: none; font-size: 14px; }

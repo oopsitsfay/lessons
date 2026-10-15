@@ -16,7 +16,7 @@
   const root = document.documentElement;
   const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
   const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : systemDark());
-  const syncToggle = () => { $('themeToggle').textContent = isDark() ? 'Paper' : 'Night'; };
+  const syncToggle = () => { $('themeToggle').textContent = isDark() ? 'Light' : 'Dark'; };
   const savedTheme = store.get('hp.theme', null);
   if (savedTheme) root.dataset.theme = savedTheme;
   syncToggle();

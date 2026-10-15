@@ -57,7 +57,7 @@
   .tape span:nth-child(1) { opacity: .35; } .tape span:nth-child(2) { opacity: .6; }
   .tape span:last-child { color: var(--text-2); }
   .tape-head { display: flex; justify-content: space-between; font: 500 10px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
-  .tape-head i { font-style: normal; color: var(--accent); }
+  .tape-head i { font-style: normal; color: var(--accent-fg); }
   @media (max-width: 860px) { .stage { padding: 0; } .stage > .frame, .stage > .tape, .stage > .result { width: auto; margin-left: 0; } .plate { display: none; } }
   canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
   .msg { font: 13px "JetBrains Mono", monospace; color: var(--text-2); margin-top: 16px; min-height: 1.5em; word-break: break-word; }
@@ -93,12 +93,12 @@
   .run.now .fill { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .run b { display: block; font: 700 13px "JetBrains Mono", monospace; margin-top: 12px; }
   .run em { display: block; font: 11px "JetBrains Mono", monospace; color: var(--muted); font-style: normal; }
-  .run.now b { color: var(--accent); }
+  .run.now b { color: var(--accent-fg); }
   .run-note { margin: 28px 0 0; font: 13px "JetBrains Mono", monospace; color: var(--text-2); }
   @media (max-width: 700px) { .runs { grid-template-columns: repeat(5, 1fr); row-gap: 22px; } .run .fill { height: 90px !important; } }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .steps > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 30px 26px; }
-  .steps .n { font: 700 12px "JetBrains Mono", monospace; color: var(--accent); letter-spacing: .1em; margin-bottom: 40px; display: flex; justify-content: space-between; }
+  .steps .n { font: 700 12px "JetBrains Mono", monospace; color: var(--accent-fg); letter-spacing: .1em; margin-bottom: 40px; display: flex; justify-content: space-between; }
   .steps .n span { color: var(--muted); font-weight: 400; }
   .steps h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
   .steps p { margin: 0; color: var(--text-2); font-size: 15px; }
@@ -121,7 +121,7 @@
 <nav class="top"><div class="wrap">
   <a class="logo" href="/">HASH<span>/</span>PRINTS</a>
   <div class="links"><a href="/">About</a><a href="mint.html" class="on">Mint</a><a href="collection.html" id="navCollection">Collection</a><a href="/#minting">How it works</a><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X</a></div>
-  <div class="nav-actions"><button class="theme-toggle" id="themeToggle" type="button">Paper</button></div>
+  <div class="nav-actions"><button class="theme-toggle" id="themeToggle" type="button">Light</button></div>
 </div></nav>
 <main>
   <header class="page-head"><div class="wrap">

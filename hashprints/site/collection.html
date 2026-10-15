@@ -41,7 +41,7 @@
   .head .actions { display: flex; gap: 8px; padding-bottom: 6px; flex-wrap: wrap; }
   .badge { display: inline-flex; align-items: center; gap: 8px; font: 500 11px "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; padding: 5px 11px; border: 1px solid var(--line-2); border-radius: 99px; color: var(--text-2); }
   .badge i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-  .badge.live i { color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .badge.live i { color: var(--accent-fg); box-shadow: 0 0 0 3px var(--accent-soft); }
   .badge.live i { animation: pulse 1.6s infinite; }
   .badge.off i { color: var(--bad); }
   @keyframes pulse { 50% { opacity: .3; } }
@@ -86,7 +86,7 @@
   .filters label span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .filters label em { font: 11px "JetBrains Mono", monospace; color: var(--muted); font-style: normal; }
   .filters details > div { padding-bottom: 8px; }
-  .filters input { accent-color: var(--accent); }
+  .filters input { accent-color: var(--accent-fg); }
   .filters .head-row { display: none; }
   @media (max-width: 860px) {
     .layout { grid-template-columns: minmax(0, 1fr); }
@@ -105,11 +105,11 @@
   .card .name { font-weight: 700; display: flex; justify-content: space-between; gap: 6px; align-items: center; }
   .card .sub { color: var(--muted); font: 11px "JetBrains Mono", monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .card .price { font: 700 14px "JetBrains Mono", monospace; margin-top: 6px; }
-  .ev.sale { color: var(--accent); }
+  .ev.sale { color: var(--accent-fg); }
   .tag { font: 700 10px "JetBrains Mono", monospace; letter-spacing: .5px; text-transform: uppercase; padding: 2px 7px; border: 1px solid currentColor; border-radius: 3px; white-space: nowrap; }
   .tag.gold { color: var(--gold); }
   .tag.holo { color: var(--holo); }
-  .tag.ap { color: var(--accent); }
+  .tag.ap { color: var(--accent-fg); }
   .more { display: flex; justify-content: center; padding: 24px 0; }
   .empty { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 48px 20px; text-align: center; color: var(--ink-2); }
   .empty p { margin: 0 0 14px; }
@@ -166,7 +166,7 @@
   .head { position: relative; z-index: 2; margin-top: 0; }
   .avatar { margin-top: -78px; width: 136px; height: 136px; }
   @media (max-width: 560px) { .avatar { width: 92px; height: 92px; margin-top: -52px; } }
-  .stats div:first-child b { color: var(--accent); }
+  .stats div:first-child b { color: var(--accent-fg); }
   .tabs { border-bottom: 0; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; width: max-content; max-width: 100%; }
   .tabs button { border: 0; border-radius: 99px; padding: 9px 18px; margin: 0; font-size: 14px; }
   .tabs button.on { background: var(--text); color: var(--bg); }
@@ -178,10 +178,34 @@
   .card:has(.tag.holo) { border-color: color-mix(in srgb, var(--holo) 60%, var(--line)); box-shadow: 0 0 46px -16px var(--holo); }
   .card:has(.tag.ap) { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
   .card .name { font-size: 16px; letter-spacing: -.01em; }
-  .card .price { color: var(--accent); }
+  .card .price { color: var(--accent-fg); }
   table.list tbody tr { transition: background .15s; }
   table.list tbody tr:hover { background: var(--surface); }
   table.list .item canvas { border-radius: 3px; }
+
+  /* holders */
+  .hsum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 24px 0 12px; }
+  .hsum div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; }
+  .hsum b { display: block; font: 700 22px "JetBrains Mono", monospace; letter-spacing: -.02em; }
+  .hsum span { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  @media (max-width: 760px) { .hsum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .hdist { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; margin: 0 0 28px; }
+  .hdist .t { display: flex; justify-content: space-between; font: 500 11px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .hdist .bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: var(--surface-2); gap: 2px; }
+  .hdist .bar i { display: block; height: 100%; }
+  .hdist .keys { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 12px; font: 12px "JetBrains Mono", monospace; color: var(--text-2); }
+  .hdist .keys span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 8px; background: var(--c); }
+  table.holders .rank { font: 700 13px "JetBrains Mono", monospace; color: var(--muted); }
+  table.holders tr.top .rank { color: var(--accent-fg); }
+  table.holders .who { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  table.holders .dot { width: 28px; height: 28px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); }
+  table.holders .who b { font: 600 13px "JetBrains Mono", monospace; }
+  table.holders .who em { display: block; font: 11px "JetBrains Mono", monospace; color: var(--muted); font-style: normal; }
+  table.holders .thumbs { display: flex; gap: 4px; align-items: center; }
+  table.holders .thumbs canvas { width: 30px; height: 30px; image-rendering: pixelated; border-radius: 3px; border: 1px solid var(--line); }
+  table.holders .thumbs small { font: 11px "JetBrains Mono", monospace; color: var(--muted); margin-left: 4px; }
+  table.holders .held { font: 700 15px "JetBrains Mono", monospace; }
+  table.holders .share { width: 96px; height: 6px; border-radius: 99px; overflow: hidden; background: var(--surface-2); }
 </style>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HashPrints">
@@ -200,7 +224,7 @@
 <nav class="top"><div class="wrap">
   <a class="logo" href="/">HASH<span>/</span>PRINTS</a>
   <div class="links"><a href="/">About</a><a href="mint.html" id="navMint">Mint</a><a href="collection.html" class="on" id="navCollection">Collection</a><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X</a></div>
-  <div class="nav-actions"><button class="theme-toggle" id="themeToggle" type="button">Paper</button><button class="btn sm ghost" id="walletBtn" type="button">My prints</button></div>
+  <div class="nav-actions"><button class="theme-toggle" id="themeToggle" type="button">Light</button><button class="btn sm ghost" id="walletBtn" type="button">My prints</button></div>
 </div></nav>
 
 <div class="strip" id="strip" aria-hidden="true"></div>
@@ -264,7 +288,9 @@
   </section>
 
   <section id="tab-holders" class="hidden">
-    <table class="list"><thead><tr><th class="num" style="width:48px">#</th><th>Wallet</th><th class="num">Prints</th><th class="num hide-sm">Share</th></tr></thead><tbody id="holders"></tbody></table>
+    <div class="hsum" id="holderStats"></div>
+    <div class="hdist" id="holderDist"></div>
+    <table class="list holders"><thead><tr><th class="num" style="width:56px">Rank</th><th>Wallet</th><th class="hide-sm">Prints</th><th class="num">Held</th><th class="num hide-sm">Share</th></tr></thead><tbody id="holders"></tbody></table>
   </section>
 </main>
 <footer class="site"><div class="wrap">
