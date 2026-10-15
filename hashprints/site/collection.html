@@ -156,6 +156,32 @@
   table.list .act:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .err { border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: var(--r); padding: 14px 18px; background: var(--surface); margin: 24px 0; }
   .readfrom { color: var(--muted); font: 12px "JetBrains Mono", monospace; margin: 40px 0 0; }
+
+  /* art-forward touches */
+  .strip { display: flex !important; height: 220px !important; border-bottom: 0 !important; }
+  .strip canvas { flex: 0 0 auto; width: 220px !important; height: 220px !important; }
+  .strip::before { content: ""; position: absolute; inset: 0; z-index: 1; background-image: linear-gradient(rgba(0,0,0,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.18) 1px, transparent 1px); background-size: 220px 100%, 100% 100%; pointer-events: none; }
+  .strip::after { z-index: 1; background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 20%, transparent) 0%, transparent 30%, var(--bg) 100%) !important; }
+  @media (max-width: 760px) { .strip, .strip canvas { height: 120px !important; } .strip canvas { width: 120px !important; } }
+  .head { position: relative; z-index: 2; margin-top: 0; }
+  .avatar { margin-top: -78px; width: 136px; height: 136px; }
+  @media (max-width: 560px) { .avatar { width: 92px; height: 92px; margin-top: -52px; } }
+  .stats div:first-child b { color: var(--accent); }
+  .tabs { border-bottom: 0; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 99px; width: max-content; max-width: 100%; }
+  .tabs button { border: 0; border-radius: 99px; padding: 9px 18px; margin: 0; font-size: 14px; }
+  .tabs button.on { background: var(--text); color: var(--bg); }
+  .tabs button.on em { color: var(--bg); opacity: .6; }
+  @media (max-width: 560px) { .tabs { width: 100%; justify-content: space-between; } .tabs button { padding: 8px 10px; font-size: 13px; } .tabs button em { display: none; } }
+  .card canvas { transition: transform .35s ease; }
+  .card:hover canvas { transform: scale(1.045); }
+  .card:has(.tag.gold) { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); box-shadow: 0 0 40px -18px var(--gold); }
+  .card:has(.tag.holo) { border-color: color-mix(in srgb, var(--holo) 60%, var(--line)); box-shadow: 0 0 46px -16px var(--holo); }
+  .card:has(.tag.ap) { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+  .card .name { font-size: 16px; letter-spacing: -.01em; }
+  .card .price { color: var(--accent); }
+  table.list tbody tr { transition: background .15s; }
+  table.list tbody tr:hover { background: var(--surface); }
+  table.list .item canvas { border-radius: 3px; }
 </style>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HashPrints">

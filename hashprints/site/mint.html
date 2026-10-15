@@ -14,7 +14,8 @@
 <style>
   .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
   @media (max-width: 600px) { .wrap { padding: 0 16px; } }
-  main { padding: 0 0 24px; }
+  main { padding: 0; }
+  footer.site { margin-top: 0; }
   .page-head { padding: 72px 0 80px; }
   .grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 72px; align-items: start; }
   @media (max-width: 860px) { .grid { grid-template-columns: 1fr; gap: 36px; } .page-head { padding: 48px 0 56px; } }
@@ -43,8 +44,21 @@
   label { display: block; font: 500 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 0 0 8px; }
   select { width: 100%; font: 13px "JetBrains Mono", monospace; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r); }
   select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .frame { background: var(--surface); border: 1px solid var(--line-2); padding: 14px; box-shadow: var(--shadow); border-radius: 2px; }
+  .stage { position: relative; padding: 40px 0 0; }
+  .stage > .frame, .stage > .tape, .stage > .result { width: 76%; margin-left: 12%; }
+  .plate { position: absolute; width: 46%; background: var(--surface); border: 1px solid var(--line-2); padding: 8px; box-shadow: var(--shadow); border-radius: 2px; }
+  .plate.a { right: -8px; top: 0; transform: rotate(5deg); }
+  .plate.b { left: -8px; top: 46%; transform: rotate(-6deg); }
+  .frame { position: relative; z-index: 2; background: var(--surface); border: 1px solid var(--line-2); padding: 14px; box-shadow: var(--shadow), 0 0 0 1px var(--bg); border-radius: 2px; }
   .frame-cap { display: flex; justify-content: space-between; margin-top: 12px; font: 11px "JetBrains Mono", monospace; color: var(--muted); }
+  .frame-cap b { color: var(--text); font-weight: 700; }
+  .tape { position: relative; z-index: 2; margin-top: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; font: 11px/1.8 "JetBrains Mono", monospace; color: var(--muted); overflow: hidden; white-space: nowrap; }
+  .tape span { display: block; overflow: hidden; text-overflow: ellipsis; }
+  .tape span:nth-child(1) { opacity: .35; } .tape span:nth-child(2) { opacity: .6; }
+  .tape span:last-child { color: var(--text-2); }
+  .tape-head { display: flex; justify-content: space-between; font: 500 10px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .tape-head i { font-style: normal; color: var(--accent); }
+  @media (max-width: 860px) { .stage { padding: 0; } .stage > .frame, .stage > .tape, .stage > .result { width: auto; margin-left: 0; } .plate { display: none; } }
   canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
   .msg { font: 13px "JetBrains Mono", monospace; color: var(--text-2); margin-top: 16px; min-height: 1.5em; word-break: break-word; }
   .msg.err { color: var(--bad); }
@@ -56,12 +70,39 @@
   .result td { text-align: right; }
   .gold { color: var(--gold); font-weight: 700; }
   .notlive { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 22px; color: var(--text-2); font-size: 15px; }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 72px; }
-  .steps > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 26px 24px; }
-  .steps .n { font: 700 12px "JetBrains Mono", monospace; color: var(--accent); letter-spacing: .1em; margin-bottom: 26px; }
-  .steps h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: -.01em; }
-  .steps p { margin: 0; color: var(--text-2); font-size: 14px; }
-  @media (max-width: 860px) { .steps { grid-template-columns: 1fr; margin-top: 48px; } }
+  .fins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .fin { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 14px 22px; position: relative; overflow: hidden; }
+  .fin .art { background: var(--bg); padding: 10px; border: 1px solid var(--line); }
+  .fin .top { display: flex; justify-content: space-between; align-items: baseline; margin: 20px 6px 6px; }
+  .fin h3 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+  .fin .odds { font: 700 15px "JetBrains Mono", monospace; }
+  .fin p { margin: 0 6px; color: var(--text-2); font-size: 14px; }
+  .fin .seed { display: block; margin: 14px 6px 0; font: 11px "JetBrains Mono", monospace; color: var(--muted); }
+  .fin.gold { border-color: color-mix(in srgb, var(--gold) 55%, var(--line)); box-shadow: 0 0 60px -20px var(--gold); }
+  .fin.gold h3, .fin.gold .odds { color: var(--gold); }
+  .fin.holo { border-color: color-mix(in srgb, var(--holo) 60%, var(--line)); box-shadow: 0 0 70px -18px var(--holo); }
+  .fin.holo h3, .fin.holo .odds { color: var(--holo); }
+  .fin.holo::before { content: ""; position: absolute; inset: 0; background: linear-gradient(120deg, transparent 30%, color-mix(in srgb, var(--holo) 14%, transparent) 50%, transparent 70%); pointer-events: none; }
+  @media (max-width: 860px) { .fins { grid-template-columns: 1fr; max-width: 420px; } }
+  .runs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; align-items: end; }
+  .run { text-align: center; }
+  .run .fill { height: 150px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); position: relative; overflow: hidden; }
+  .run:nth-child(3) .fill, .run:nth-child(4) .fill { height: 170px; } .run:nth-child(5) .fill, .run:nth-child(6) .fill { height: 190px; }
+  .run:nth-child(7) .fill, .run:nth-child(8) .fill { height: 210px; } .run:nth-child(9) .fill, .run:nth-child(10) .fill { height: 230px; }
+  .run .fill span { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: var(--accent); transition: height .8s; }
+  .run.now .fill { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .run b { display: block; font: 700 13px "JetBrains Mono", monospace; margin-top: 12px; }
+  .run em { display: block; font: 11px "JetBrains Mono", monospace; color: var(--muted); font-style: normal; }
+  .run.now b { color: var(--accent); }
+  .run-note { margin: 28px 0 0; font: 13px "JetBrains Mono", monospace; color: var(--text-2); }
+  @media (max-width: 700px) { .runs { grid-template-columns: repeat(5, 1fr); row-gap: 22px; } .run .fill { height: 90px !important; } }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .steps > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 30px 26px; }
+  .steps .n { font: 700 12px "JetBrains Mono", monospace; color: var(--accent); letter-spacing: .1em; margin-bottom: 40px; display: flex; justify-content: space-between; }
+  .steps .n span { color: var(--muted); font-weight: 400; }
+  .steps h3 { margin: 0 0 8px; font-size: 20px; letter-spacing: -.01em; }
+  .steps p { margin: 0; color: var(--text-2); font-size: 15px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
 </style>
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="HashPrints">
@@ -117,20 +158,54 @@
         </div>
         <div class="msg" id="msg"></div>
       </div>
-      <div>
-        <div class="frame"><canvas id="canvas" width="32" height="32"></canvas><div class="frame-cap"><span>Preview</span><span>32 × 32</span></div></div>
+      <div class="stage">
+        <figure class="plate a" aria-hidden="true"><canvas id="plateA" width="32" height="32"></canvas></figure>
+        <figure class="plate b" aria-hidden="true"><canvas id="plateB" width="32" height="32"></canvas></figure>
+        <div class="frame"><canvas id="canvas" width="32" height="32"></canvas><div class="frame-cap"><b>Your print</b><span>32 × 32 · drawn from your hash</span></div></div>
+        <div class="tape" id="tape" aria-hidden="true"><div class="tape-head"><span>Nonce · keccak256</span><i>searching</i></div><span></span><span></span><span></span></div>
         <div class="result hidden" id="result"><table id="resultTable"></table></div>
       </div>
     </div>
   </div></header>
 
-  <div class="wrap">
-    <div class="steps">
-      <div><div class="n">01</div><h3>Connect</h3><p>Connect the wallet you want the print minted to. Up to 2 per wallet.</p></div>
-      <div><div class="n">02</div><h3>Find a hash</h3><p>Your browser searches for a valid hash. Keep going for extra zero bits and a rarer finish.</p></div>
-      <div><div class="n">03</div><h3>Mint</h3><p>Confirm in your wallet. The hash is saved on-chain and becomes your print.</p></div>
+  <section class="band tone">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><div class="label"><b>01</b> Finishes</div><h2>Same price.<br>Rarer with work.</h2></div>
+        <p>Stop at the first valid hash, or keep searching. Every extra zero bit doubles the work, and enough of them turn a print into Gold Leaf or Holo Foil.</p>
+      </div>
+      <div class="fins">
+        <div class="fin"><div class="art"><canvas id="finCommon" width="32" height="32"></canvas></div><div class="top"><h3>Common</h3><span class="odds">93.75%</span></div><p>The run's required bits, up to 3 extra.</p><span class="seed" id="capCommon"></span></div>
+        <div class="fin gold"><div class="art"><canvas id="finGold" width="32" height="32"></canvas></div><div class="top"><h3>Gold Leaf</h3><span class="odds">5.86%</span></div><p>4 to 7 extra zero bits. About 16× the work.</p><span class="seed" id="capGold"></span></div>
+        <div class="fin holo"><div class="art"><canvas id="finHolo" width="32" height="32"></canvas></div><div class="top"><h3>Holo Foil</h3><span class="odds">0.39%</span></div><p>8 or more extra zero bits. About 256× the work.</p><span class="seed" id="capHolo"></span></div>
+      </div>
     </div>
-  </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><div class="label"><b>02</b> Runs</div><h2>Ten runs.<br>Rising difficulty.</h2></div>
+        <p>3,330 public prints in 10 runs of 333. Difficulty starts at 16 zero bits and climbs one bit every two runs, so early prints are quicker to find.</p>
+      </div>
+      <div class="runs" id="runs"></div>
+      <p class="run-note" id="runNote"></p>
+    </div>
+  </section>
+
+  <section class="band tone">
+    <div class="wrap">
+      <div class="sec-head">
+        <div><div class="label"><b>03</b> How it works</div><h2>Three steps.</h2></div>
+        <p>Nothing to install. The search runs in your browser, and the mint is one transaction at a flat price.</p>
+      </div>
+      <div class="steps">
+        <div><div class="n">01 <span>Wallet</span></div><h3>Connect</h3><p>Connect the wallet you want the print minted to. Up to 2 per wallet.</p></div>
+        <div><div class="n">02 <span>Search</span></div><h3>Find a hash</h3><p>Your browser searches for a valid hash. Keep going for extra zero bits and a rarer finish.</p></div>
+        <div><div class="n">03 <span>Mint</span></div><h3>Confirm</h3><p>Confirm in your wallet. The hash is saved on-chain and becomes your print.</p></div>
+      </div>
+    </div>
+  </section>
 </main>
 <footer class="site"><div class="wrap">
   <div class="cols">
@@ -143,5 +218,6 @@
 <script src="wallet.js"></script>
 <script src="hashprints.js"></script>
 <script src="mint.js"></script>
+<script src="mint-art.js"></script>
 </body>
 </html>

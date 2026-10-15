@@ -69,3 +69,12 @@ footer.site .legal { display: flex; justify-content: space-between; gap: 16px; f
 @media (max-width: 600px) { footer.site .wrap { padding: 0 16px; } }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* sections */
+section.band { padding: 104px 0; border-top: 1px solid var(--line); }
+section.band.tone { background: var(--bg-2); }
+@media (max-width: 700px) { section.band { padding: 72px 0; } }
+.sec-head { display: grid; grid-template-columns: 1fr 1.2fr; gap: 64px; align-items: end; margin-bottom: 56px; }
+.sec-head h2 { font-size: clamp(32px, 4.4vw, 52px); line-height: 1.02; letter-spacing: -.035em; margin: 0; }
+.sec-head p { font-size: 17px; color: var(--text-2); margin: 0; max-width: 580px; }
+@media (max-width: 860px) { .sec-head { grid-template-columns: 1fr; gap: 18px; margin-bottom: 40px; } }
