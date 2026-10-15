@@ -68,7 +68,9 @@
     const mine = owner ? prints.filter((p) => same(p.owner, owner)) : prints;
     const strip = $('strip');
     const pool = (mine.length ? mine : prints).slice().reverse().slice(0, 12);
-    strip.replaceChildren(...pool.map(thumb));
+    // Few prints yet: repeat them so the banner is always full width.
+    const tiles = pool.length ? Array.from({ length: 12 }, (_, i) => pool[i % pool.length]) : [];
+    strip.replaceChildren(...tiles.map(thumb));
     strip.classList.toggle('hidden', !pool.length);
 
     const avatar = $('avatar');
