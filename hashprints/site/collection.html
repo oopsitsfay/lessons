@@ -170,6 +170,8 @@
   .err { border-left: 4px solid var(--bad); padding: 12px 16px; background: var(--paper-2); margin: 24px 0; }
   footer { border-top: 1px solid var(--rule); margin-top: 64px; padding: 24px 0 40px; color: var(--muted); font: 12px "JetBrains Mono", monospace; }
   footer .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .safety { font: 12px/1.6 "JetBrains Mono", monospace; color: var(--muted); border: 1px dashed var(--rule); padding: 10px 12px; margin: 24px 0 0; word-break: break-word; }
+  .safety a { color: inherit; }
 </style>
 </head>
 <body>
@@ -242,6 +244,7 @@
   <section id="tab-holders" class="hidden">
     <table class="list"><thead><tr><th class="num" style="width:48px">#</th><th>Wallet</th><th class="num">Prints</th><th class="num hide-sm">Share</th></tr></thead><tbody id="holders"></tbody></table>
   </section>
+<p class="safety">Official contract: <a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">0x71450bBb4408b38DC69E2f110f3ffEc906cce985</a>. HashPrints will never ask for your recovery phrase, private key or password, never messages you first, and only mints and trades on this site. Anything else using the name is not us.</p>
 </main>
 <footer><div class="wrap"><span id="foot">Read from the chain.</span><span><a href="/">About HashPrints</a> · <a href="mint.html" id="footMint">Mint</a></span></div></footer>
 

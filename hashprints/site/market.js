@@ -15,10 +15,33 @@
   const eth = (wei, unit = 'ETH', digits = 6) => `${(Number(BigInt(wei)) / 1e18).toLocaleString('en-US', { maximumFractionDigits: digits })} ${unit}`;
   const now = () => Math.floor(Date.now() / 1000);
 
+  // The page never trusts the server about which contracts to approve or pay: Seaport and WETH
+  // are pinned here, the collection must match mint-config.json, and every listing and offer is
+  // re-checked against the same rules the server uses before it is shown or used.
+  let configPromise;
+  const config = () => (configPromise ||= fetch('/mint-config.json', { cache: 'no-store' }).then((r) => r.json()));
+
   async function load(key) {
     const r = await fetch(`/api/market?c=${key}`, { cache: 'no-store' });
     const body = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(body.error || `HTTP ${r.status}`);
+    if (!body.enabled) return body;
+    const cfg = (await config())[key] || {};
+    const local = body.chainId === 31337; // dev chain: contracts are deployed fresh by the tests
+    const bad = (why) => { throw new Error(`Trading is paused on this page: ${why}. Reload, and report it if it persists.`); };
+    if (body.chainId !== cfg.chainId && !local) bad('unexpected network');
+    if (!M.same(body.collection, cfg.address) && !local) bad('unexpected collection contract');
+    if (!local && !M.same(body.seaport, M.SEAPORT)) bad('unexpected exchange contract');
+    if (!local && !M.same(body.weth, M.WETH[body.chainId])) bad('unexpected WETH contract');
+    const now = Math.floor(Date.now() / 1000);
+    const ok = (row, check) => {
+      try {
+        return ethers.isAddress(row.maker) && M.same(row.maker, row.components.offerer) && check(row.components) === null
+          && BigInt(row.price) === M.priceOf(row.components);
+      } catch { return false; }
+    };
+    body.listings = (body.listings || []).filter((l) => ok(l, (c) => M.checkListing(c, { collection: body.collection, fees: body.fees, now })));
+    body.offers = (body.offers || []).filter((o) => ok(o, (c) => M.checkOffer(c, { collection: body.collection, fees: body.fees, weth: body.weth, now })));
     return body;
   }
 

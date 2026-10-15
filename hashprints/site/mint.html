@@ -62,6 +62,8 @@
   .gold { color: var(--gold); font-weight: 700; }
   .notlive { border: 1px dashed var(--rule); padding: 20px; text-align: center; color: var(--ink-2); }
   .hidden { display: none !important; }
+  .safety { font: 12px/1.6 "JetBrains Mono", monospace; color: var(--muted); border: 1px dashed var(--rule); padding: 10px 12px; margin: 24px 0 0; word-break: break-word; }
+  .safety a { color: inherit; }
 </style>
 </head>
 <body>
@@ -105,6 +107,7 @@
       <div class="result hidden" id="result"><table id="resultTable"></table></div>
     </div>
   </div>
+<p class="safety">Official contract: <a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">0x71450bBb4408b38DC69E2f110f3ffEc906cce985</a>. HashPrints will never ask for your recovery phrase, private key or password, never messages you first, and only mints and trades on this site. Anything else using the name is not us.</p>
 </main>
 <script src="vendor/ethers-6.umd.min.js"></script>
 <script src="wallet.js"></script>

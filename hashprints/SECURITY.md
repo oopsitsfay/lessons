@@ -62,6 +62,15 @@ The market adds no contract. Trades settle on Seaport 1.6, and the site's part i
 - **Approvals:** `setApprovalForAll(Seaport)` and WETH `approve(Seaport)` let Seaport move a wallet's prints or WETH only when one of that wallet's own signed orders is filled. They're the same approvals OpenSea asks for.
 - **Abuse limits:** request bodies are capped at 20 KB, and a wallet can hold at most 25 open offers per collection.
 
+## Protecting collectors from scams
+
+- **No secrets, ever.** No page has a field for, or asks for, a recovery phrase, private key or password. Every public page says so next to the official contract address, and that HashPrints never messages people first.
+- **Nothing blind to sign.** The site never uses `eth_sign`. Wallet requests are plain transactions to known contracts, Seaport orders shown field by field in the wallet (EIP-712), and the admin's plain-text sign-in.
+- **Approvals are narrow.** `setApprovalForAll` is only ever requested for Seaport 1.6, and WETH approvals are capped at what an offer needs (current allowance + offer), never unlimited.
+- **The page doesn't trust the server about contracts.** `market.js` pins Seaport and WETH, and requires the collection to match `mint-config.json`. If the API ever returned anything else (a compromised server or storage), trading pauses on the page. Every listing and offer is re-checked in the browser with the same rules the server uses (shape, exact fees, price), so a tampered order with a missing or redirected fee is dropped before anyone can sign or pay. Tested by feeding the page tampered responses.
+- **Fake tokens can't be traded here.** Only the official HashPrints contract can be listed, offers must be in real WETH, and orders in any other token are refused by the API and the page. Sales in unknown tokens are labelled and left out of the volume.
+- **No injected code.** A strict Content-Security-Policy allows scripts only from the site itself (no inline scripts, no third-party scripts, no eval). The site can't be framed by another page (clickjacking), and `/.well-known/security.txt` says where to report problems.
+
 ## Before mainnet
 
 - [ ] Independent professional audit

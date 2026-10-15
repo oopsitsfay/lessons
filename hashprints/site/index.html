@@ -189,6 +189,8 @@
   dialog .frame { margin-bottom: 16px; }
   dialog table { margin-bottom: 16px; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  .safety { font: 12px/1.6 "JetBrains Mono", monospace; color: var(--muted); border: 1px dashed var(--rule); padding: 10px 12px; margin: 24px 0 0; word-break: break-word; }
+  .safety a { color: inherit; }
 </style>
 </head>
 <body>
@@ -437,6 +439,7 @@
 
 <footer>
   <div class="wrap">
+    <p class="safety" style="flex-basis:100%;margin:0 0 12px">Official contract: <a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">0x71450bBb4408b38DC69E2f110f3ffEc906cce985</a>. HashPrints will never ask for your recovery phrase, private key or password, never messages you first, and only mints and trades on this site. Anything else using the name is not us.</p>
     <span>HASH/PRINTS · 3,333</span>
     <span><a href="https://github.com/oopsitsfay/lessons/tree/claude/fervent-babbage-e0f7cf/hashprints">Source</a> · ETH price as of Oct 12, 2026</span>
   </div>
