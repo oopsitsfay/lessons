@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icon.png">
+<meta name="robots" content="noindex">
+<title>HashPrints Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root { --paper: #f4f0e6; --paper-2: #ebe5d6; --ink: #1b1b1b; --ink-2: #4a463d; --muted: #7a7466; --rule: #d6cfbd; --accent: #ff48b0; --ok: #00835a; --bad: #c62828; --warn-bg: #fff3c4; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --warn-bg: #2a2410; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --paper: #0b0b10; --paper-2: #14141c; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #8b8a9c; --rule: #2a2a38; --accent: #c6ff00; --ok: #3ddc97; --bad: #ff6b6b; --warn-bg: #2a2410; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.55 "Space Grotesk", system-ui, sans-serif; }
+  code, .mono, input, select, table, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+  header { border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--paper); z-index: 5; }
+  header .wrap { display: flex; align-items: center; gap: 12px; min-height: 60px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+  .logo { font: 700 16px "JetBrains Mono", monospace; text-decoration: none; white-space: nowrap; }
+  .logo span { color: var(--accent); }
+  .logo small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .grow { flex: 1; }
+  .pill { font: 12px "JetBrains Mono", monospace; padding: 4px 10px; border: 1px solid var(--rule); white-space: nowrap; }
+  .pill.main { border-color: var(--bad); color: var(--bad); }
+  .pill.test { border-color: var(--ok); color: var(--ok); }
+  button, .btn { font: 700 13px "JetBrains Mono", monospace; padding: 9px 14px; border: 2px solid var(--ink); background: var(--ink); color: var(--paper); cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  button.ghost { background: transparent; color: var(--ink); }
+  button.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+  button:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); color: #000; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  main { padding: 24px 0 64px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid > * { min-width: 0; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel { border: 1px solid var(--rule); background: var(--paper-2); padding: 20px; }
+  .panel.wide { grid-column: 1 / -1; }
+  .panel h2 { font-size: 18px; margin: 0 0 4px; }
+  .panel > p { color: var(--ink-2); margin: 0 0 16px; font-size: 14px; }
+  label { display: block; font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 12px 0 4px; }
+  input, select { width: 100%; font-size: 13px; padding: 9px 10px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); }
+  .row { display: flex; gap: 8px; align-items: end; flex-wrap: wrap; }
+  .row > .f { flex: 1; min-width: 140px; }
+  .row + .row { margin-top: 8px; }
+  .cols3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 600px) { .cols3 { grid-template-columns: 1fr 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 400; width: 42%; }
+  td { word-break: break-all; }
+  .ok { color: var(--ok); }
+  .bad { color: var(--bad); }
+  .actions { display: grid; gap: 14px; }
+  .action { border-top: 1px solid var(--rule); padding-top: 14px; }
+  .action:first-child { border-top: 0; padding-top: 0; }
+  .action h3 { font-size: 14px; margin: 0 0 2px; }
+  .action p { margin: 0 0 8px; color: var(--ink-2); font-size: 13px; }
+  .mint-out { display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: start; margin-top: 16px; }
+  @media (max-width: 600px) { .mint-out { grid-template-columns: 1fr; } }
+  canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; border: 1px solid var(--rule); background: var(--paper); }
+  .status { font: 12px "JetBrains Mono", monospace; color: var(--ink-2); word-break: break-all; min-height: 1.4em; margin-top: 8px; }
+  .tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .tokens a { display: block; text-decoration: none; border: 1px solid var(--rule); padding: 6px; background: var(--paper); }
+  .tokens a:hover { border-color: var(--accent); }
+  .tokens span { display: flex; justify-content: space-between; font: 11px "JetBrains Mono", monospace; color: var(--muted); margin-top: 4px; }
+  #log { font: 12px/1.6 "JetBrains Mono", monospace; max-height: 260px; overflow: auto; background: var(--paper); border: 1px solid var(--rule); padding: 10px; margin: 0; white-space: pre-wrap; word-break: break-all; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="logo" href="/">HASH<span>/</span>PRINTS<small>admin</small></a>
+    <span class="grow"></span>
+    <span class="pill hidden" id="netPill"></span>
+    <select id="netSelect" class="hidden" aria-label="Network" style="width:auto;padding:8px 10px;font:700 12px 'JetBrains Mono',monospace;border:2px solid var(--ink);background:transparent;color:var(--ink)">
+      <option value="1">Ethereum mainnet</option>
+      <option value="11155111">Sepolia testnet</option>
+    </select>
+    <button id="connectBtn" type="button">Connect wallet</button>
+    <button class="ghost" id="signOutBtn" type="button">Sign out</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="grid">
+    <section class="panel">
+      <h2>Contract</h2>
+      <p>Deploy a new collection from this page, or load one you've already deployed.</p>
+      <label for="preset">Preset</label>
+      <select id="preset">
+        <option value="test">Test HashPrint · 10 (2 runs × 5)</option>
+        <option value="main">HashPrints · 3,333 (10 runs × 333 + 3 A/P)</option>
+      </select>
+      <div class="cols3">
+        <div><label for="cName">Name</label><input id="cName"></div>
+        <div><label for="cSymbol">Symbol</label><input id="cSymbol"></div>
+        <div><label for="cPrice">Price (ETH)</label><input id="cPrice"></div>
+        <div><label for="cRunSize">Run size</label><input id="cRunSize" type="number" min="1"></div>
+        <div><label for="cRuns">Runs</label><input id="cRuns" type="number" min="1"></div>
+        <div><label for="cAP">Artist proofs</label><input id="cAP" type="number" min="0"></div>
+      </div>
+      <label for="cBase">Base URI</label>
+      <input id="cBase" spellcheck="false">
+      <div class="row" style="margin-top:12px">
+        <button id="deployBtn" type="button">Deploy</button>
+      </div>
+      <div class="status" id="deployStatus"></div>
+      <label for="loadAddr">Load existing contract</label>
+      <div class="row">
+        <div class="f"><input id="loadAddr" placeholder="0x…" spellcheck="false"></div>
+        <button id="loadBtn" class="ghost" type="button">Load</button>
+      </div>
+      <div class="status" id="savedList"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Status</h2>
+      <p>Read live from the chain. <a href="#" id="refreshBtn">Refresh</a></p>
+      <p id="publicLink" class="status"></p>
+      <table id="statusTable"><tr><td class="mono" style="color:var(--muted)">No contract loaded.</td></tr></table>
+    </section>
+
+    <section class="panel">
+      <h2>Owner actions</h2>
+      <p>Only work from the owner wallet.</p>
+      <div class="actions">
+        <div class="action"><h3>Go live</h3><p>Until you press this, every mint is rejected by the contract and the public mint page shows "not live". Going live can't be undone, and the price is fixed from then on.</p><button id="openBtn" type="button">Go live</button></div>
+        <div class="action"><h3>Set price</h3><p>Only before going live.</p>
+          <div class="row"><div class="f"><input id="newPrice" placeholder="0.000315"></div><button id="priceBtn" class="ghost" type="button">Set price</button></div></div>
+        <div class="action"><h3>Base URI</h3><p>Change where metadata is served from. Lock it once a token shows correctly on a marketplace.</p>
+          <div class="row"><div class="f"><input id="newBase" spellcheck="false"></div><button id="baseBtn" class="ghost" type="button">Set</button></div>
+          <div class="row"><button id="lockBtn" class="danger" type="button">Lock base URI (permanent)</button></div></div>
+        <div class="action"><h3>Artist proof</h3><p>Free. Finds a 16-bit hash for the owner wallet, then mints the next artist proof.</p><button id="apBtn" class="ghost" type="button">Find hash and mint A/P</button></div>
+        <div class="action"><h3>Withdraw</h3><p>Sends the contract's whole balance.</p>
+          <div class="row"><div class="f"><input id="withdrawTo" placeholder="0x… (defaults to your wallet)" spellcheck="false"></div><button id="withdrawBtn" class="ghost" type="button">Withdraw</button></div></div>
+        <div class="action"><h3>Ownership</h3><p>Two steps: the current owner proposes, the new owner accepts.</p>
+          <div class="row"><div class="f"><input id="newOwner" placeholder="0x…" spellcheck="false"></div><button id="transferBtn" class="ghost" type="button">Propose</button><button id="acceptBtn" class="ghost" type="button">Accept</button></div></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Test mint</h2>
+      <p>Finds a hash for your connected wallet at the current difficulty, then mints at the contract's price. Same flow a collector goes through.</p>
+      <label for="aim">Search until</label>
+      <select id="aim">
+        <option value="0">First valid hash</option>
+        <option value="4">+4 extra bits (Gold Leaf)</option>
+      </select>
+      <div class="row" style="margin-top:12px">
+        <button id="mintBtn" type="button">Find hash and mint</button>
+        <button id="stopBtn" class="ghost" type="button" disabled>Stop search</button>
+      </div>
+      <div class="status" id="mintStatus"></div>
+      <div class="mint-out hidden" id="mintOut">
+        <canvas id="mintCanvas" width="32" height="32"></canvas>
+        <table id="mintTable"></table>
+      </div>
+    </section>
+
+    <section class="panel wide">
+      <h2>Minted tokens</h2>
+      <p>From the contract's <code>Pressed</code> events.</p>
+      <div class="tokens" id="tokens"><span class="mono" style="color:var(--muted)">Nothing yet.</span></div>
+    </section>
+
+    <section class="panel">
+      <h2>Verify on Etherscan</h2>
+      <p>On the contract page on Etherscan, open Verify and Publish, choose <b>Solidity (Standard-Json-Input)</b>, then use these values.</p>
+      <table>
+        <tr><th>Compiler</th><td id="vCompiler">–</td></tr>
+        <tr><th>License</th><td>MIT</td></tr>
+        <tr><th>Input JSON</th><td><a href="contract/HashPrints.standard-input.json" download>HashPrints.standard-input.json</a></td></tr>
+        <tr><th>Constructor args</th><td><textarea id="vArgs" readonly rows="3" style="width:100%;font:11px 'JetBrains Mono',monospace;background:var(--paper);color:var(--ink);border:1px solid var(--rule);resize:vertical">Deploy from this page to fill this in.</textarea><button id="copyArgs" class="ghost" type="button" style="margin-top:6px">Copy</button></td></tr>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Market</h2>
+      <p>Listing storage and fees for buying and selling on the site.</p>
+      <div id="marketCheck">Checking…</div>
+      <button class="ghost" id="marketCheckBtn" type="button">Check again</button>
+    </section>
+
+    <section class="panel">
+      <h2>Log</h2>
+      <p>Transactions and errors from this session.</p>
+      <pre id="log"></pre>
+    </section>
+  </div>
+</main>
+
+<script src="vendor/ethers-6.umd.min.js"></script>
+<script src="wallet.js"></script>
+<script src="hashprints.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

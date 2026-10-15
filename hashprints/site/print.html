@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icon.png">
+<title>HashPrint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+<script src="theme.js"></script>
+<style>
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 56px 24px 0; }
+  @media (max-width: 600px) { .wrap { padding: 32px 16px 0; } }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; gap: 24px; } }
+  @media (min-width: 761px) { .grid > .frame { position: sticky; top: 100px; } }
+  .frame { background: var(--surface); border: 1px solid var(--line-2); padding: 14px; border-radius: 2px; box-shadow: var(--shadow); }
+  canvas { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+  h1 { font-size: clamp(40px, 6vw, 68px); line-height: .98; margin: 0 0 10px; letter-spacing: -.04em; }
+  .sub { color: var(--muted); font: 13px "JetBrains Mono", monospace; word-break: break-all; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font: 13px "JetBrains Mono", monospace; margin-bottom: 24px; }
+  th, td { text-align: left; padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  th { color: var(--muted); font-weight: 400; width: 40%; }
+  td { text-align: right; }
+  .gold { color: var(--gold); font-weight: 700; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  button, .btn { display: inline-flex; align-items: center; justify-content: center; font: 700 12px "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; padding: 11px 16px; border: 1px solid var(--line-2); border-radius: var(--r); background: transparent; color: var(--text); cursor: pointer; text-decoration: none; transition: background .15s, color .15s, border-color .15s; }
+  button:hover, .btn:hover { background: var(--surface-2); border-color: var(--text-2); }
+  .err { border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: var(--r); padding: 14px 18px; background: var(--surface); }
+    h2 { font: 500 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 0 0 8px; }
+  td a { text-decoration-color: var(--accent-fg); }
+  .hist td:first-child { text-align: left; }
+  .trade { border: 1px solid var(--line-2); background: var(--surface); border-radius: var(--r); padding: 22px; margin: 0 0 28px; }
+  .trade .row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .trade .lbl { font: 500 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .trade .price { font: 700 30px "JetBrains Mono", monospace; letter-spacing: -.02em; }
+  .trade .sub { font: 12px "JetBrains Mono", monospace; color: var(--muted); margin: 4px 0 14px; word-break: normal; }
+  .trade .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .trade .acts button { flex: 1 1 160px; }
+  .trade button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .trade button.primary:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .trade button:disabled { opacity: .45; cursor: not-allowed; }
+  .trade form { margin-top: 14px; display: grid; gap: 10px; }
+  .trade label { font: 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); display: grid; gap: 6px; }
+  .trade input, .trade select { font: 15px "JetBrains Mono", monospace; padding: 11px 12px; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--bg); color: var(--text); width: 100%; }
+  .trade .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .trade .split { font: 12px "JetBrains Mono", monospace; color: var(--ink-2, var(--muted)); line-height: 1.7; }
+  .trade .msg { font: 13px "JetBrains Mono", monospace; margin-top: 12px; min-height: 1.2em; word-break: break-word; }
+  .trade .msg.bad { color: var(--bad); }
+  .trade .msg.good { color: var(--ok); }
+  .trade .split div { display: flex; justify-content: space-between; }
+  .trade .presets, .panel .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .trade button.preset, .panel button.preset { font: 12px "JetBrains Mono", monospace; padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 99px; background: transparent; color: var(--text); cursor: pointer; flex: 0 0 auto; text-transform: none; letter-spacing: 0; }
+  .trade button.preset:hover, .panel button.preset:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .trade .note { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .trade form label { margin-top: 2px; }
+  #offers { margin: 0 0 24px; }
+  #offers .none { color: var(--muted); font: 13px "JetBrains Mono", monospace; margin: 0; }
+  table.offers td, table.offers th { vertical-align: middle; }
+  table.offers th { width: auto; }
+  table.offers td { text-align: left; }
+  table.offers td:last-child { text-align: right; }
+  table.offers button { padding: 7px 12px; font-size: 12px; }
+  table.offers button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  table.offers .sub { margin: 2px 0 0; font-size: 11px; }
+
+  /* print detail */
+  h1 { margin-bottom: 16px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 18px; }
+  .seedbox { display: flex; gap: 12px; align-items: baseline; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; margin: 0 0 24px; }
+  .seedbox span { font: 500 10px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); flex: none; }
+  .seedbox code { font: 12px/1.6 "JetBrains Mono", monospace; color: var(--text-2); word-break: break-all; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; margin: 0 0 16px; }
+  .card h2 { margin: 0 0 6px; }
+  .card table { margin: 0; }
+  .card tr:last-child th, .card tr:last-child td { border-bottom: 0; }
+  .card td .wchip { justify-content: flex-end; }
+  .tgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+  .tgrid div { background: var(--bg); border: 1px solid var(--line); border-radius: var(--r); padding: 11px 13px; min-width: 0; }
+  .tgrid span { display: block; font: 500 10px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .tgrid b { display: block; font: 600 14px "Space Grotesk", sans-serif; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tgrid b.gold { color: var(--gold); } .tgrid b.holo { color: var(--holo); }
+  @media (max-width: 520px) { .tgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .timeline { list-style: none; margin: 10px 0 0; padding: 0 0 0 18px; border-left: 1px solid var(--line-2); }
+  .timeline li { position: relative; padding: 4px 0 18px 6px; }
+  .timeline li:last-child { padding-bottom: 2px; }
+  .timeline li::before { content: ""; position: absolute; left: -24px; top: 10px; width: 11px; height: 11px; border-radius: 50%; background: var(--surface); border: 2px solid var(--line-2); }
+  .timeline li.mint::before { border-color: var(--ok); } .timeline li.sale::before { border-color: var(--accent); background: var(--accent); }
+  .timeline .th { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font: 12px "JetBrains Mono", monospace; }
+  .timeline .th a { margin-left: auto; color: var(--muted); text-decoration: none; }
+  .timeline .th a:hover { color: var(--text); }
+  .timeline .tw { margin-top: 8px; font: 13px "JetBrains Mono", monospace; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .timeline .tw .wchip { color: var(--text); }
+  #offers h2 { margin-bottom: 6px; }
+  .btns { margin-top: 8px; }
+</style>
+</head>
+<body>
+<nav class="top"><div class="wrap">
+  <a class="logo" href="/">HASH<span>/</span>PRINTS</a>
+  <div class="links"><a href="/">About</a><a href="mint.html" id="navMint">Mint</a><a href="collection.html" id="navCollection">Collection</a><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X</a></div>
+  <div class="nav-actions"><button class="theme-toggle" id="themeToggle" type="button">Light</button></div>
+</div></nav>
+<main class="wrap">
+  <div id="view"></div>
+</main>
+<footer class="site"><div class="wrap">
+  <div class="cols">
+    <div><a class="logo" href="/">HASH<span>/</span>PRINTS</a><p class="about">3,333 pixel prints on Ethereum, each drawn from a proof-of-work hash found by its minter.</p></div>
+    <ul><li><a href="/">About</a></li><li><a href="collection.html">Collection</a></li><li><a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Contract</a></li><li><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X @hashprintsnft</a></li></ul>
+  </div>
+  <div class="legal"><span>© 2026 HashPrints</span><span>Ethereum · ERC-721</span></div>
+</div></footer>
+<script src="vendor/ethers-6.umd.min.js"></script>
+<script src="wallet.js"></script>
+<script src="market-core.js"></script>
+<script src="market.js"></script>
+<script src="hashprints.js"></script>
+<script src="print.js"></script>
+</body>
+</html>

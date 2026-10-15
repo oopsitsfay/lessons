@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/icon.png">
+<title>HashPrints · Proof-of-work pixel prints on Ethereum</title>
+<meta name="description" content="HashPrints: 3,333 generative pixel prints on Ethereum. Each one is drawn from a proof-of-work hash found by its minter.">
+<meta name="theme-color" content="#0b0c0e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ---------------------------------------------------------------- tokens */
+  :root {
+    --bg: #0b0c0e; --bg-2: #101114; --surface: #141519; --surface-2: #1a1c21;
+  --line: #24262c; --line-2: #31343b;
+  --text: #f4f5f7; --text-2: #b4b8c1; --muted: #7d828d;
+  --accent: #c6ff00; --accent-fg: #c6ff00; --accent-ink: #0b0c0e; --accent-soft: rgba(198, 255, 0, .10);
+    --pink: #ff48b0; --gold: #e8c45a; --holo: #b69cff;
+    --code: #101017;
+    --grid: rgba(255, 255, 255, .025);
+    --shadow: 0 30px 80px -30px rgba(0, 0, 0, .7);
+    --r: 4px;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff; --bg-2: #f6f7f9; --surface: #ffffff; --surface-2: #f1f3f6;
+  --line: #e4e6eb; --line-2: #d2d6dd;
+  --text: #0b0c0e; --text-2: #434854; --muted: #767c88;
+  --accent: #c6ff00; --accent-fg: #4a6a00; --accent-ink: #0b0c0e; --accent-soft: rgba(150, 200, 0, .16);
+    --gold: #9a7400; --holo: #5b3fd6;
+    --code: #f1f3f6;
+    --grid: rgba(11, 12, 14, .045);
+    --shadow: 0 24px 48px -28px rgba(15, 20, 30, .22);
+    color-scheme: light;
+  }
+
+  /* ---------------------------------------------------------------- base */
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.65 "Space Grotesk", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono, code, pre, .tag, table { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  code { font-size: .88em; background: var(--surface-2); border: 1px solid var(--line); padding: 1px 6px; border-radius: 3px; }
+  a { color: inherit; text-decoration-color: var(--accent-fg); text-underline-offset: 3px; }
+  p { margin: 0 0 16px; }
+  h1, h2, h3 { font-weight: 700; letter-spacing: -.02em; }
+  h3 { font-size: 19px; margin: 0 0 8px; line-height: 1.3; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  @media (max-width: 600px) { .wrap { padding: 0 16px; } }
+  canvas.print { width: 100%; aspect-ratio: 1; image-rendering: pixelated; display: block; }
+  figure { margin: 0; }
+  .muted { color: var(--muted); }
+
+  /* ---------------------------------------------------------------- buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; font: 700 13px "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; padding: 14px 22px; border: 1px solid var(--text); background: var(--text); color: var(--bg); text-decoration: none; cursor: pointer; border-radius: var(--r); transition: background .15s, color .15s, border-color .15s, transform .15s; white-space: nowrap; }
+  .btn:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primary:hover { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .btn.ghost { background: transparent; color: var(--text); border-color: var(--line-2); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent-ink); background: var(--accent); }
+  .btn.sm { padding: 9px 14px; font-size: 11px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn .arrow { font-weight: 400; }
+
+  /* ---------------------------------------------------------------- nav */
+  nav.top { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  nav.top .wrap { display: flex; align-items: center; gap: 28px; height: 68px; }
+  .logo { font: 800 17px "JetBrains Mono", monospace; text-decoration: none; letter-spacing: -.02em; white-space: nowrap; }
+  .logo span { color: var(--accent-fg); }
+  .links { display: flex; gap: 26px; flex: 1; }
+  .links a { text-decoration: none; color: var(--text-2); font-size: 14px; white-space: nowrap; transition: color .15s; }
+  .links a:hover { color: var(--text); }
+  .nav-actions { display: flex; gap: 10px; align-items: center; }
+  .theme-toggle { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; cursor: pointer; }
+  .theme-toggle:hover { color: var(--text); border-color: var(--line-2); }
+  @media (max-width: 900px) { .links { display: none; } nav.top .wrap { justify-content: space-between; } }
+
+  /* ---------------------------------------------------------------- hero */
+  .hero { position: relative; overflow: hidden; padding: 96px 0 0; border-bottom: 1px solid var(--line); }
+  .hero::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 32px 32px; mask-image: radial-gradient(ellipse 80% 70% at 70% 40%, #000 30%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse 80% 70% at 70% 40%, #000 30%, transparent 75%); pointer-events: none; }
+  .hero::after { content: ""; position: absolute; width: 760px; height: 760px; right: -180px; top: -260px; background: radial-gradient(circle, var(--accent-soft), transparent 62%); pointer-events: none; }
+  .hero .wrap { position: relative; z-index: 1; }
+  .hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 64px; align-items: center; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font: 500 12px "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--text-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 7px 14px; margin-bottom: 28px; background: color-mix(in srgb, var(--surface) 70%, transparent); }
+  .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); display: block; }
+  .eyebrow.live i { background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); animation: pulse 1.8s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .hero h1 { font-size: clamp(48px, 7.4vw, 92px); line-height: .96; letter-spacing: -.045em; margin: 0 0 26px; }
+  .hero h1 em { font-style: normal; color: var(--accent-fg); }
+  .hero .lede { font-size: clamp(17px, 1.6vw, 20px); color: var(--text-2); max-width: 560px; margin: 0 0 36px; }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .hero-meta { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 30px; font: 12px "JetBrains Mono", monospace; color: var(--muted); }
+  .hero-meta a { color: var(--text-2); text-decoration: none; border-bottom: 1px solid var(--line-2); }
+  .hero-meta a:hover { color: var(--text); border-color: var(--accent); }
+
+  .hero-art { position: relative; height: 560px; }
+  .plate { position: absolute; background: var(--surface); border: 1px solid var(--line-2); padding: 12px; box-shadow: var(--shadow); border-radius: 2px; }
+  .plate figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font: 11px "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; overflow: hidden; }
+  .plate figcaption b { color: var(--text); font-weight: 700; }
+  .plate.a { width: 62%; right: 0; bottom: 0; z-index: 2; }
+  .plate.b { width: 46%; left: 0; top: 0; z-index: 3; }
+  .grindline { position: absolute; left: 0; bottom: 0; font: 11px/1.7 "JetBrains Mono", monospace; color: var(--muted); word-break: break-all; opacity: .75; max-width: 34%; }
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+    .hero-art { height: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .plate { position: static; width: auto !important; }
+    .grindline { position: static; grid-column: 1 / -1; max-width: none; order: 3; }
+  }
+
+  .live-strip { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 88px; border-top: 1px solid var(--line); }
+  .live-strip > div { padding: 24px 22px 28px; border-right: 1px solid var(--line); }
+  .live-strip > div:first-child { padding-left: 0; }
+  .live-strip > div:last-child { border-right: 0; }
+  .live-strip .k { font: 500 11px "JetBrains Mono", monospace; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+  .live-strip .v { font: 700 24px/1.2 "JetBrains Mono", monospace; margin-top: 8px; letter-spacing: -.02em; }
+  .live-strip .s { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .meter { height: 3px; background: var(--line); margin-top: 12px; border-radius: 3px; overflow: hidden; }
+  .meter span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .6s; }
+  @media (max-width: 960px) { .live-strip { grid-template-columns: 1fr 1fr; } .live-strip > div { padding: 20px 16px; border-bottom: 1px solid var(--line); } .live-strip > div:first-child { padding-left: 16px; } .live-strip > div:nth-child(2n) { border-right: 0; } .live-strip > div:last-child { grid-column: 1 / -1; } }
+
+  /* ---------------------------------------------------------------- sections */
+  section { padding: 112px 0; border-bottom: 1px solid var(--line); }
+  section.tone { background: var(--bg-2); }
+  @media (max-width: 700px) { section { padding: 76px 0; } }
+  .sec-head { display: grid; grid-template-columns: 1fr 1.25fr; gap: 64px; align-items: end; margin-bottom: 64px; }
+  .sec-head.stack { grid-template-columns: 1fr; gap: 0; }
+  .label { display: flex; align-items: center; gap: 12px; font: 500 12px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 20px; }
+  .label b { color: var(--accent-fg); font-weight: 700; }
+  .label::after { content: ""; height: 1px; width: 48px; background: var(--line-2); }
+  h2 { font-size: clamp(34px, 4.6vw, 56px); line-height: 1.02; letter-spacing: -.035em; margin: 0; }
+  .sec-head p { font-size: 18px; color: var(--text-2); margin: 0; max-width: 620px; }
+  @media (max-width: 860px) { .sec-head { grid-template-columns: 1fr; gap: 20px; margin-bottom: 44px; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; }
+  .cols-2 > *, .sim > *, .anatomy > *, .hero-grid > * { min-width: 0; }
+  @media (max-width: 860px) { .cols-2 { grid-template-columns: 1fr; gap: 32px; } }
+  .sub-title { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 0 18px; }
+  .sub-title h3 { font-size: 22px; margin: 0; }
+  .sub-title span { font: 12px "JetBrains Mono", monospace; color: var(--muted); }
+  .block { margin-top: 88px; }
+
+  /* about */
+  .spec { padding: 8px 28px; }
+  .spec div { display: flex; justify-content: space-between; gap: 18px; padding: 15px 0; border-bottom: 1px solid var(--line); font: 14px "JetBrains Mono", monospace; }
+  .spec div:last-child { border-bottom: 0; }
+  .spec dt { color: var(--muted); }
+  .spec dd { margin: 0; text-align: right; }
+  .about-copy p { color: var(--text-2); font-size: 17px; }
+  .about-copy p:first-child { color: var(--text); font-size: 21px; line-height: 1.5; }
+  @media (max-width: 600px) { .about-copy p:first-child { font-size: 18px; } }
+
+  /* steps */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .step { padding: 32px 28px 30px; position: relative; }
+  .step .n { font: 700 13px "JetBrains Mono", monospace; color: var(--accent-fg); letter-spacing: .1em; margin-bottom: 44px; display: flex; justify-content: space-between; }
+  .step .n span { color: var(--muted); font-weight: 400; }
+  .step h3 { font-size: 22px; margin-bottom: 12px; }
+  .step p { color: var(--text-2); font-size: 15px; margin: 0; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 500; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--surface-2); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .table-scroll { overflow-x: auto; }
+  .table-card { padding: 6px 0; }
+  .r-golden { color: var(--gold); font-weight: 700; }
+  .r-mythic { color: var(--holo); font-weight: 700; }
+  .copy-col p { color: var(--text-2); }
+
+  /* art */
+  .anatomy { display: grid; grid-template-columns: minmax(0, 480px) 1fr; gap: 64px; align-items: center; }
+  .anatomy-art { position: relative; padding: 14px; }
+  .pin { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 12px/26px "JetBrains Mono", monospace; text-align: center; transform: translate(-50%, -50%); box-shadow: 0 0 0 4px var(--surface); }
+  .anatomy ol { list-style: none; padding: 0; margin: 0; counter-reset: a; }
+  .anatomy li { counter-increment: a; padding: 18px 0 18px 48px; border-bottom: 1px solid var(--line); position: relative; color: var(--text-2); }
+  .anatomy li:last-child { border-bottom: 0; }
+  .anatomy li::before { content: counter(a); position: absolute; left: 0; top: 18px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-2); color: var(--text); font: 700 12px/24px "JetBrains Mono", monospace; text-align: center; }
+  .anatomy li b { color: var(--text); display: block; margin-bottom: 2px; }
+  @media (max-width: 860px) { .anatomy { grid-template-columns: 1fr; gap: 36px; } }
+
+  .editions { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .edition { display: grid; grid-template-columns: 168px 1fr; gap: 24px; align-items: center; padding: 22px; border-radius: var(--r); border: 1px solid; }
+  .edition.paper { background: #f4f0e6; color: #17161a; border-color: #d6cfbd; }
+  .edition.night { background: #07070a; color: #f2f1ec; border-color: #2f2f3c; }
+  .edition h3 { font-size: 22px; }
+  .edition p { font-size: 14px; opacity: .78; margin: 0; }
+  .edition .share { font: 12px "JetBrains Mono", monospace; opacity: .6; margin-top: 10px; display: block; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 14px; }
+  .swatches i { width: 18px; height: 18px; display: block; border-radius: 2px; border: 1px solid rgba(128,128,128,.35); }
+  @media (max-width: 860px) { .editions { grid-template-columns: 1fr; } .edition { grid-template-columns: 112px 1fr; } }
+
+  .presses { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  .presses figure { background: var(--surface); border: 1px solid var(--line); padding: 10px; border-radius: var(--r); }
+  .presses figcaption { font: 700 13px "JetBrains Mono", monospace; margin-top: 12px; }
+  .presses figcaption span { display: block; font: 400 12px/1.5 "Space Grotesk", sans-serif; color: var(--muted); margin-top: 4px; }
+  @media (max-width: 960px) { .presses { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 520px) { .presses { grid-template-columns: repeat(2, 1fr); } }
+
+  .filters { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
+  .chip { font: 500 12px "JetBrains Mono", monospace; padding: 8px 14px; border: 1px solid var(--line-2); border-radius: 99px; background: transparent; color: var(--text-2); cursor: pointer; transition: all .15s; }
+  .chip:hover { color: var(--text); border-color: var(--text-2); }
+  .chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(156px, 1fr)); gap: 14px; }
+  .gallery button { all: unset; cursor: pointer; display: block; border: 1px solid var(--line); padding: 8px; background: var(--surface); border-radius: var(--r); transition: border-color .15s, transform .15s; }
+  .gallery button:hover, .gallery button:focus-visible { border-color: var(--accent); transform: translateY(-2px); }
+  .gallery .cap { font: 11px "JetBrains Mono", monospace; color: var(--muted); margin-top: 8px; display: flex; justify-content: space-between; gap: 6px; }
+
+  /* simulator */
+  .sim { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+  .sim-controls { padding: 36px; border-right: 1px solid var(--line); }
+  .sim-out { padding: 36px; background: var(--surface-2); }
+  .sim label { display: block; font: 500 11px "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 22px 0 8px; }
+  .sim label:first-of-type { margin-top: 0; }
+  .sim input[type=text], .sim select { width: 100%; font: 13px "JetBrains Mono", monospace; padding: 12px; background: var(--bg); color: var(--text); border: 1px solid var(--line-2); border-radius: var(--r); }
+  .sim input:focus, .sim select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .row .btn { flex: 0 0 auto; }
+  .readout { font: 13px "JetBrains Mono", monospace; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); }
+  .readout dt { color: var(--muted); }
+  .readout dd { margin: 0; text-align: right; word-break: break-all; }
+  .price-now { font: 700 26px "JetBrains Mono", monospace; }
+  .price-now small { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .sim-out .frame { max-width: 320px; margin: 0 auto 18px; background: var(--surface); border: 1px solid var(--line-2); padding: 12px; }
+  .status { font: 12px "JetBrains Mono", monospace; color: var(--muted); min-height: 1.5em; text-align: center; word-break: break-all; }
+  .traits { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; justify-content: center; }
+  .tag { font-size: 11px; padding: 4px 9px; border: 1px solid var(--line-2); background: var(--surface); border-radius: 3px; }
+  .tag.gold { border-color: var(--gold); color: var(--gold); font-weight: 700; }
+  .walletcount { font: 12px "JetBrains Mono", monospace; color: var(--muted); margin-top: 8px; }
+  @media (max-width: 860px) { .sim { grid-template-columns: 1fr; } .sim-controls { border-right: 0; border-bottom: 1px solid var(--line); padding: 24px; } .sim-out { padding: 24px; } }
+
+  /* trust */
+  .trust { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 64px; }
+  .trust .panel { padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .trust .ic { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); display: grid; place-items: center; color: var(--accent-fg); margin-bottom: 8px; }
+  .trust h3 { font-size: 17px; margin: 0; }
+  .trust p { font-size: 14px; color: var(--text-2); margin: 0; flex: 1; }
+  .trust a.more { font: 600 12px "JetBrains Mono", monospace; color: var(--text); text-decoration: none; letter-spacing: .04em; }
+  .trust a.more:hover { color: var(--accent-fg); }
+  @media (max-width: 960px) { .trust { grid-template-columns: 1fr; } }
+    .addr { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; margin-bottom: 16px; flex-wrap: wrap; }
+  .addr .k { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .addr .v { font: 500 14px "JetBrains Mono", monospace; word-break: break-all; }
+
+  /* faq */
+  .faq { display: grid; grid-template-columns: .8fr 1.2fr; gap: 64px; }
+  .faq details { border-bottom: 1px solid var(--line); padding: 22px 0; }
+  .faq details:first-child { padding-top: 0; }
+  .faq summary { cursor: pointer; font-weight: 600; font-size: 18px; list-style: none; display: flex; justify-content: space-between; gap: 20px; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; font: 400 20px/1 "JetBrains Mono", monospace; color: var(--muted); transition: transform .2s; }
+  .faq details[open] summary::after { content: "−"; color: var(--accent-fg); }
+  .faq details p { color: var(--text-2); margin: 14px 0 0; max-width: 680px; }
+  @media (max-width: 860px) { .faq { grid-template-columns: 1fr; gap: 36px; } }
+
+  /* closing call to action */
+  .cta { position: relative; overflow: hidden; text-align: center; padding: 120px 0; border-bottom: 1px solid var(--line); }
+  .cta::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 32px 32px; mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, #000 20%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse 60% 70% at 50% 50%, #000 20%, transparent 75%); }
+  .cta .wrap { position: relative; }
+  .cta h2 { font-size: clamp(40px, 6vw, 76px); margin-bottom: 18px; }
+  .cta h2 em { font-style: normal; color: var(--accent-fg); }
+  :root[data-theme="light"] .hero h1 em, :root[data-theme="light"] .cta h2 em { color: var(--text); background: linear-gradient(transparent 58%, var(--accent) 58%, var(--accent) 90%, transparent 90%); padding: 0 .06em; }
+  .cta p { color: var(--text-2); font-size: 18px; max-width: 540px; margin: 0 auto 34px; }
+  .cta .hero-actions { justify-content: center; }
+
+  /* footer */
+  footer { padding: 72px 0 40px; background: var(--bg-2); }
+  .foot { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 40px; padding-bottom: 48px; }
+  .foot h4 { font: 500 11px "JetBrains Mono", monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
+  .foot ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .foot a { color: var(--text-2); text-decoration: none; font-size: 14px; }
+  .foot a:hover { color: var(--text); }
+  .foot .about { color: var(--text-2); font-size: 14px; max-width: 320px; margin-top: 14px; }
+  .legal { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font: 12px "JetBrains Mono", monospace; color: var(--muted); padding-top: 24px; border-top: 1px solid var(--line); }
+  @media (max-width: 860px) { .foot { grid-template-columns: 1fr 1fr; } .foot > :first-child { grid-column: 1 / -1; } }
+
+  /* dialog */
+  dialog { border: 1px solid var(--line-2); border-radius: var(--r); background: var(--surface); color: var(--text); padding: 24px; max-width: min(560px, calc(100vw - 32px)); width: 100%; box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+  dialog .frame { margin-bottom: 18px; border: 1px solid var(--line); padding: 10px; background: var(--bg); }
+  dialog table { margin-bottom: 18px; }
+  dialog .row { flex-wrap: wrap; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .eyebrow.live i { animation: none; } * { transition: none !important; } }
+</style>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="HashPrints">
+<meta property="og:title" content="HashPrints">
+<meta property="og:description" content="3,333 pixel prints pressed from proof of work on Ethereum. Your browser finds the hash; the hash draws the print.">
+<meta property="og:url" content="https://hashprints.vercel.app/">
+<meta property="og:image" content="https://hashprints.vercel.app/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@hashprintsnft">
+<meta name="twitter:creator" content="@hashprintsnft">
+<meta name="twitter:image" content="https://hashprints.vercel.app/og.png">
+</head>
+<body>
+<nav class="top">
+  <div class="wrap">
+    <a class="logo" href="#top">HASH<span>/</span>PRINTS</a>
+    <div class="links">
+      <a href="#about">About</a><a href="#minting">Minting</a><a href="#art">Art</a><a href="#try">Simulator</a><a href="#trust">Contract</a><a href="#faq">FAQ</a><a href="collection.html">Collection</a>
+    </div>
+    <div class="nav-actions">
+      <button class="theme-toggle" id="themeToggle" type="button">Light</button>
+      <a class="btn primary sm" href="mint.html">Mint</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow" id="liveBadge"><i></i><span id="liveText">Proof-of-work pixel art · Ethereum</span></div>
+        <h1>Pixel prints you have to <em>mine.</em></h1>
+        <p class="lede">3,333 prints, no pre-made art and no reveal. To mint, your browser searches for a hash that starts with enough zero bits. That hash goes on-chain and draws your print.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="mint.html">Mint a print <span class="arrow">→</span></a>
+          <a class="btn ghost" href="collection.html">View collection</a>
+        </div>
+        <div class="hero-meta">
+          <span>Contract <a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">0x7145…e985</a> · verified</span>
+          <a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">@hashprintsnft</a>
+          <a href="#try">Try the simulator</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-label="Example prints">
+        <div class="grindline" id="grindline"></div>
+        <figure class="plate a"><canvas class="print" id="heroNight" width="32" height="32"></canvas><figcaption><b>Night</b><span id="heroNightCap"></span></figcaption></figure>
+        <figure class="plate b"><canvas class="print" id="heroPaper" width="32" height="32"></canvas><figcaption><b>Paper</b><span id="heroPaperCap"></span></figcaption></figure>
+      </div>
+    </div>
+    <div class="live-strip">
+      <div><div class="k">Minted</div><div class="v" id="liveMinted">– / 3,333</div><div class="meter"><span id="liveMeter"></span></div></div>
+      <div><div class="k">Mint price</div><div class="v">0.000315 ETH</div><div class="s">≈ $0.80, plus gas</div></div>
+      <div><div class="k">Per wallet</div><div class="v">2</div><div class="s">public mints</div></div>
+      <div><div class="k">Difficulty</div><div class="v">16–20 bits</div><div class="s">rises every two runs</div></div>
+      <div><div class="k">Network</div><div class="v">Ethereum</div><div class="s">ERC-721 · verified</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="about">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="label"><b>01</b> About</div><h2>No reveal.<br>No pre-made art.</h2></div>
+      <p>The art doesn't exist until someone mines it. Every print is rendered from the keccak256 hash its minter found, and the drawing code runs right here in your browser, so anyone can redraw any token from its on-chain seed.</p>
+    </div>
+    <div class="cols-2">
+      <div class="about-copy">
+        <p>Minting takes two inputs: a nonce for which <code>keccak256(contract, wallet, nonce)</code> starts with enough zero bits, and the mint price.</p>
+        <p>The contract checks the hash, stores it as the token's seed, and mints. Your wallet address is part of the hash, so nobody can copy your nonce, and the same seed always gives the same image.</p>
+        <p>The result is a collection where every piece carries a small proof of the work that made it.</p>
+      </div>
+      <dl class="panel spec">
+        <div><dt>Name</dt><dd>HashPrints (HASHPRINT)</dd></div>
+        <div><dt>Supply</dt><dd>3,333 · 3,330 public + 3 artist proofs</dd></div>
+        <div><dt>Mint price</dt><dd>0.000315 ETH, gas separate</dd></div>
+        <div><dt>Limit</dt><dd>2 per wallet</dd></div>
+        <div><dt>Standard</dt><dd>ERC-721 · Ethereum mainnet</dd></div>
+        <div><dt>Image</dt><dd>32 × 32 px · Paper and Night</dd></div>
+        <div><dt>Creator fee</dt><dd>8% on resales on this site</dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section id="minting" class="tone">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="label"><b>02</b> Minting</div><h2>Three steps,<br>one flat price.</h2></div>
+      <p>Every mint costs the same. The work you put in decides whether you can mint and how rare the result is. It never changes the price.</p>
+    </div>
+    <div class="steps">
+      <div class="step panel"><div class="n">01 <span>Search</span></div><h3>Find a hash</h3><p>Your browser tries nonces until <code>keccak256(contract, wallet, nonce)</code> starts with the required zero bits. On a laptop that takes about a second at the start of the mint.</p></div>
+      <div class="step panel"><div class="n">02 <span>Mint</span></div><h3>Send it</h3><p>Submit the nonce with exactly <b>0.000315 ETH</b>. Gas is paid at the network rate when you mint. The contract rejects any other amount.</p></div>
+      <div class="step panel"><div class="n">03 <span>Own</span></div><h3>Get the print</h3><p>The contract verifies the hash, saves it as the token's seed and mints the ERC-721 to you. Up to 2 per wallet.</p></div>
+    </div>
+
+    <div class="cols-2 block">
+      <div class="copy-col">
+        <div class="sub-title"><h3>Runs and difficulty</h3></div>
+        <p>The 3,330 public prints are minted in 10 runs of 333. Difficulty starts at 16 zero bits and goes up by one every two runs, ending at 20. Each extra bit doubles the average work.</p>
+        <p class="muted" style="font-size:14px">Times assume about 150,000 hashes per second, roughly what a laptop browser manages.</p>
+      </div>
+      <div class="panel table-card table-scroll" id="runTable"></div>
+    </div>
+
+    <div class="cols-2 block">
+      <div class="copy-col">
+        <div class="sub-title"><h3>Rarity</h3></div>
+        <p>If your hash has more zero bits than the run requires, the print is rarer. Stop at the first valid hash, or keep searching for a Gold Leaf or Holo Foil finish. The odds are for stopping at the first valid hash.</p>
+      </div>
+      <div class="panel table-card table-scroll">
+        <table>
+          <thead><tr><th>Finish</th><th>Extra bits</th><th class="num">Odds</th><th class="num">≈ in 3,330</th></tr></thead>
+          <tbody>
+            <tr><td>Common</td><td>0–3</td><td class="num">93.75%</td><td class="num">3,122</td></tr>
+            <tr><td class="r-golden">Gold Leaf</td><td>4–7</td><td class="num">5.86%</td><td class="num">195</td></tr>
+            <tr><td class="r-mythic">Holo Foil</td><td>8+</td><td class="num">0.39%</td><td class="num">13</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="art">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="label"><b>03</b> The art</div><h2>Drawn from<br>the hash.</h2></div>
+      <p>Each print is a 32 × 32 image drawn by a seeded walk over the grid. The look borrows from risograph printing: two inks, slight misregistration, and a third colour where the inks overlap.</p>
+    </div>
+
+    <div class="anatomy">
+      <div class="anatomy-art panel">
+        <canvas class="print" id="anatomyPrint" width="32" height="32"></canvas>
+        <span class="pin" style="left:30%;top:5%">1</span>
+        <span class="pin" style="left:50%;top:45%">2</span>
+        <span class="pin" style="left:78%;top:24%">3</span>
+        <span class="pin" style="left:22%;top:92%">4</span>
+        <span class="pin" style="left:95%;top:60%">5</span>
+      </div>
+      <ol>
+        <li><b>Work marks</b>One mark per leading zero bit in the hash. Dim marks are the required bits, bright marks are extra.</li>
+        <li><b>Drawing area</b>A 28 × 26 px field where the lines are drawn.</li>
+        <li><b>Overlap and drift</b>The second ink can sit a pixel off. Where the inks overlap they mix into a third colour.</li>
+        <li><b>Hash strip</b>28 bits of the hash, printed as a barcode.</li>
+        <li><b>Stock</b>Paper or Night background with a light grain and a 2 px margin.</li>
+      </ol>
+    </div>
+
+    <div class="block">
+      <div class="sub-title"><h3>Editions</h3><span>set by the hash</span></div>
+      <div class="editions">
+        <div class="edition paper"><canvas class="print" id="edPaper" width="32" height="32"></canvas><div><h3>Paper</h3><p>Light stock, 10 risograph inks, multiplied where they overlap.</p><span class="share">about 60% of prints</span><div class="swatches" id="risoSwatches"></div></div></div>
+        <div class="edition night"><canvas class="print" id="edNight" width="32" height="32"></canvas><div><h3>Night</h3><p>Dark stock, 8 neon inks, screened where they overlap.</p><span class="share">about 40% of prints</span><div class="swatches" id="neonSwatches"></div></div></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="sub-title"><h3>Styles</h3><span>six drawing styles · four symmetries</span></div>
+      <div class="presses" id="presses"></div>
+    </div>
+
+    <div class="block">
+      <div class="sub-title"><h3>Examples</h3><span>sample seeds · click to inspect</span></div>
+      <div class="filters" role="group" aria-label="Filter examples">
+        <button class="chip" data-filter="all" aria-pressed="true">All</button>
+        <button class="chip" data-filter="Paper" aria-pressed="false">Paper</button>
+        <button class="chip" data-filter="Night" aria-pressed="false">Night</button>
+        <button class="chip" data-filter="rare" aria-pressed="false">Gold Leaf / Holo Foil</button>
+      </div>
+      <div class="gallery" id="gallery"></div>
+    </div>
+  </div>
+</section>
+
+<section id="try" class="tone">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="label"><b>04</b> Simulator</div><h2>Try the search<br>before you mint.</h2></div>
+      <p>This runs the same hash search as the real mint against a placeholder contract. Nothing is sent on-chain and nothing is spent. Simulated prints stay in your browser.</p>
+    </div>
+    <div class="sim panel">
+      <div class="sim-controls">
+        <label for="wallet">Wallet address</label>
+        <div class="row"><input type="text" id="wallet" spellcheck="false" autocomplete="off"><button class="btn ghost sm" id="randWallet" type="button">New</button></div>
+        <div class="walletcount" id="walletCount"></div>
+        <label for="run">Run</label>
+        <select id="run"></select>
+        <label for="aim">Search until</label>
+        <select id="aim">
+          <option value="0">First valid hash</option>
+          <option value="2">+2 extra bits (4× the work)</option>
+          <option value="4">+4 extra bits · Gold Leaf (16×)</option>
+          <option value="8">+8 extra bits · Holo Foil (256×)</option>
+        </select>
+        <dl class="readout">
+          <dt>Difficulty</dt><dd id="roDiff">16 bits</dd>
+          <dt>Expected work</dt><dd id="roWork">65,536 hashes</dd>
+          <dt>Mint price</dt><dd id="roPrice">–</dd>
+        </dl>
+        <div class="row" style="margin-top:26px">
+          <button class="btn primary" id="grindBtn" type="button" style="flex:1">Start search</button>
+          <button class="btn ghost" id="stopBtn" type="button" disabled>Stop</button>
+        </div>
+      </div>
+      <div class="sim-out">
+        <figure class="frame"><canvas class="print" id="simPrint" width="32" height="32"></canvas></figure>
+        <div class="status" id="simStatus">Press Start search to look for a valid hash.</div>
+        <div id="simResult" hidden>
+          <div class="traits" id="simTraits"></div>
+          <dl class="readout">
+            <dt>Nonce</dt><dd id="resNonce"></dd>
+            <dt>Zero bits</dt><dd id="resBits"></dd>
+            <dt>You pay</dt><dd><span class="price-now" id="resPrice"></span></dd>
+          </dl>
+          <div class="row" style="margin-top:18px">
+            <button class="btn" id="pressBtn" type="button">Mint (simulated)</button>
+            <button class="btn ghost" id="pngBtn" type="button">PNG</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="block" style="margin-top:56px">
+      <div class="sub-title"><h3>Your simulated prints</h3><span>saved in this browser</span></div>
+      <div class="gallery" id="myPrints"></div>
+    </div>
+  </div>
+</section>
+
+<section id="trust">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><div class="label"><b>05</b> Contract</div><h2>Verified and<br>out in the open.</h2></div>
+      <p>An OpenZeppelin ERC-721 with the mint logic built in. The browser uses the same hash function as the contract, so a hash found here is accepted on-chain.</p>
+    </div>
+    <div class="addr panel">
+      <div><div class="k">Official contract · Ethereum</div><div class="v">0x71450bBb4408b38DC69E2f110f3ffEc906cce985</div></div>
+      <a class="btn ghost sm" href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Etherscan <span class="arrow">↗</span></a>
+    </div>
+    <div class="trust">
+      <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8.5l3 3 7-7"/></svg></div><h3>Verified source</h3><p>The exact source code is published and matched on Etherscan and Sourcify.</p><a class="more" href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Read the code →</a></div>
+      <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 5h12M2 11h12M5 2v12M11 2v12"/></svg></div><h3>Seaport trading</h3><p>Buying, selling and offers settle on Seaport 1.6, the same exchange contract OpenSea uses.</p><a class="more" href="collection.html">Open the market →</a></div>
+      <div class="panel"><div class="ic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z"/></svg></div><h3>No secrets, ever</h3><p>We never ask for a recovery phrase, private key or password, and never message you first.</p><a class="more" href="https://x.com/hashprintsnft" target="_blank" rel="noopener">Official X →</a></div>
+    </div>
+    <div class="cols-2">
+      <div class="copy-col">
+        <div class="sub-title"><h3>Parameters</h3></div>
+        <p>The price can only change before minting opens. Once the metadata is confirmed, the owner locks the base URI with <code>lockBaseURI()</code>, and it can't be changed after that.</p>
+      </div>
+      <div class="panel table-card table-scroll">
+        <table>
+          <thead><tr><th>Parameter</th><th class="num">Value</th></tr></thead>
+          <tbody>
+            <tr><td>MAX_SUPPLY</td><td class="num">3,333</td></tr>
+            <tr><td>ARTIST_PROOFS (ids 1–3)</td><td class="num">3</td></tr>
+            <tr><td>RUN_SIZE × RUNS</td><td class="num">333 × 10</td></tr>
+            <tr><td>MAX_PER_WALLET</td><td class="num">2</td></tr>
+            <tr><td>price</td><td class="num">0.000315 ETH</td></tr>
+            <tr><td>BASE_DIFFICULTY</td><td class="num">16 bits</td></tr>
+            <tr><td>Gas per mint</td><td class="num">≈ 124k</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="tone">
+  <div class="wrap faq">
+    <div>
+      <div class="label"><b>06</b> FAQ</div>
+      <h2>Questions.</h2>
+      <p class="muted" style="margin-top:20px;max-width:340px">Anything else, ask on <a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X</a>. We'll never DM you first.</p>
+    </div>
+    <div>
+      <details><summary>How much does it cost?</summary><p>0.000315 ETH per mint, about $0.80 when the price was set (ETH ≈ $2,540, October 12, 2026). Gas is separate and depends on the network when you mint. A mint uses about 124,000 gas.</p></details>
+      <details><summary>Does finding more zero bits make it cheaper?</summary><p>No. Everyone pays the same price. Extra zero bits only affect rarity.</p></details>
+      <details><summary>Why 2 per wallet?</summary><p>To spread the collection across more holders. It's per address, so it can't stop someone using several wallets, but each wallet needs its own hash search.</p></details>
+      <details><summary>Can a GPU find hashes faster?</summary><p>Yes. Faster hardware finds valid and rare hashes sooner. A laptop browser finds a 16-bit hash in under a second, and a Gold Leaf one in a few seconds.</p></details>
+      <details><summary>Can I pick what my print looks like?</summary><p>Not directly. Each nonce gives a different hash and a different image. You can keep searching until a valid one you like turns up.</p></details>
+      <details><summary>What's stored on-chain?</summary><p>Each token's 32-byte seed. The difficulty is worked out from the token id. Images and traits are rendered from the seed by hashprints.js.</p></details>
+      <details><summary>How do marketplaces get the image?</summary><p><code>tokenURI</code> points to <code>/api/meta/&lt;id&gt;?seed=…&amp;d=…</code> on this site, with the seed taken from the contract. The API renders the traits and an SVG from the seed. It doesn't read the chain or use a database.</p></details>
+      <details><summary>Can I trade here?</summary><p>Yes. Owners can list prints, accept offers and make collection offers on the collection page. Trades settle on Seaport 1.6 with an 8% creator fee, and the site never holds your funds.</p></details>
+      <details><summary>What are artist proofs?</summary><p>Tokens #1–3, reserved for the artist. They're free, but they still needed a valid 16-bit hash. Public mints start at #4.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap">
+    <div class="label" style="justify-content:center"><b>⛏</b> 3,333 prints</div>
+    <h2>Find your <em>hash.</em></h2>
+    <p>One flat price. Your browser does the work, and the work becomes the art.</p>
+    <div class="hero-actions">
+      <a class="btn primary" href="mint.html">Mint a print <span class="arrow">→</span></a>
+      <a class="btn ghost" href="collection.html">View collection</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <a class="logo" href="#top">HASH<span>/</span>PRINTS</a>
+        <p class="about">3,333 generative pixel prints on Ethereum, each drawn from a proof-of-work hash found by its minter.</p>
+      </div>
+      <div><h4>Project</h4><ul><li><a href="mint.html">Mint</a></li><li><a href="collection.html">Collection</a></li><li><a href="#art">The art</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+      <div><h4>Official</h4><ul><li><a href="https://x.com/hashprintsnft" target="_blank" rel="noopener">X @hashprintsnft</a></li><li><a href="https://etherscan.io/address/0x71450bBb4408b38DC69E2f110f3ffEc906cce985#code" target="_blank" rel="noopener">Contract on Etherscan</a></li></ul></div>
+      <div><h4>Safety</h4><ul><li><a href="/.well-known/security.txt">Report a problem</a></li><li><a href="#trust">Verify the contract</a></li></ul></div>
+    </div>
+    <div class="legal"><span>© 2026 HashPrints</span><span>ETH price reference: Oct 12, 2026</span></div>
+  </div>
+</footer>
+
+<dialog id="inspect">
+  <figure class="frame"><canvas class="print" id="inspectPrint" width="32" height="32"></canvas></figure>
+  <div class="table-scroll"><table id="inspectTable"></table></div>
+  <div class="row"><a class="btn ghost sm" id="inspectOpen" href="#">Page</a><button class="btn ghost sm" id="inspectPng" type="button">PNG</button><button class="btn ghost sm" id="inspectSvg" type="button">SVG</button><button class="btn sm" id="inspectClose" type="button">Close</button></div>
+</dialog>
+
+<script src="hashprints.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

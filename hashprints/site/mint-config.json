@@ -1,0 +1,19 @@
+{
+  "walletConnectProjectId": "",
+  "main": {
+    "chainId": 1,
+    "address": "0x71450bBb4408b38DC69E2f110f3ffEc906cce985",
+    "fromBlock": 26180191
+  },
+  "test": {
+    "chainId": 11155111,
+    "address": "0x3C47C7B44224d7ea518a1435C200D97F82D3f8b7",
+    "fromBlock": 11902679
+  },
+  "market": {
+    "creatorFeeBps": 800,
+    "creatorFeeRecipient": "0x7C50Da6ae50697AeB5Da2113560b88255fA7AF79",
+    "marketFeeBps": 0,
+    "marketFeeRecipient": ""
+  }
+}

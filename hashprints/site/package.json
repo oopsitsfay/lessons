@@ -1,0 +1,10 @@
+{
+  "name": "hashprints-site",
+  "private": true,
+  "description": "Static site + Vercel functions (admin gate, collection and market APIs).",
+  "dependencies": {
+    "@vercel/blob": "2.8.1",
+    "@vercel/functions": "3.9.11",
+    "ethers": "6.17.0"
+  }
+}
